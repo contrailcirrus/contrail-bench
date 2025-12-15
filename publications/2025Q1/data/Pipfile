@@ -5,8 +5,10 @@ name = "pypi"
 
 [packages]
 pycontrails = {extras = ["complete"], version = "*"}
+apache-beam = {extras = ["gcp"], version = "==2.67.0"}
+google-cloud-secret-manager = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"
