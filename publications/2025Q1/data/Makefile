@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 GOOGLE_APPLICATION_CREDENTIALS = ${HOME}/.config/gcloud/application_default_credentials.json
-IMAGE = 2025q1-iagos
+IMAGE = 2025q1
 ARTIFACT_REPO = us-east1-docker.pkg.dev/contrails-301217/contrail-bench
 
 #===============
