@@ -3,9 +3,9 @@
 import argparse
 import datetime
 import itertools
-from typing import Any
 
 import apache_beam as beam
+import gcsfs
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -13,16 +13,13 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from scipy.ndimage import binary_dilation
 
 from pycontrails.physics import constants
-
-from preprocess_adsb import open_adsb
-from preprocess_contrails_org import open_forecast
-from preprocess_iagos import open_iagos
+from pycontrails.utils import temp
 
 
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-06-01 00:00", "2024-06-07 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -36,6 +33,12 @@ BUFFERS = list(range(11))
 #: GCP buckets for temporary Beam files
 BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
+
+#: GCP buckets for temporary assets
+GCP_TMPDIR = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/contrails-org-iagos"
+GCP_FORECAST_TMPDIR = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/contrails-org"
+GCP_ADSB_TMPDIR = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/adsb"
+GCP_IAGOS_TMPDIR = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/iagos"
 
 #: GCP bucket for permanent assets
 GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/contrails-org-iagos"
@@ -83,6 +86,71 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
     raise ValueError(msg)
 
 
+def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
+    """Open preprocessed forecast.
+
+    Parameters
+    ----------
+    time : datetime.datetime
+        Forecast time
+
+    flight_level : int
+        Forecast flight level
+
+    Return
+    ------
+    xr.Dataset
+        Binary PCR forecast
+
+    """
+    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
+    with temp.temp_file() as tmp:
+        gcsfs.GCSFileSystem().get(gcs_path, tmp)
+        return xr.open_dataset(tmp, engine="netcdf4")
+
+
+def open_iagos(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
+    """Open preprocessed IAGOS PCR observations.
+
+    Parameters
+    ----------
+    time : datetime.datetime
+        Target time
+
+    flight_level : int
+        Target flight level
+
+    Return
+    ------
+    pd.DataFrame
+        Preprocessed IAGOS PCR observations
+
+    """
+    gcs_path = f"{GCP_IAGOS_TMPDIR}/{int(time.timestamp())}_{flight_level}.iagos.pq"
+    return pd.read_parquet(gcs_path)
+
+
+def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
+    """Open preprocessed ADSB flight distance.
+
+    Parameters
+    ----------
+    time : datetime.datetime
+        Target time
+
+    flight_level : int
+        Target flight level
+
+    Return
+    ------
+    pd.DataFrame
+        Preprocessed ADSB flight distance
+
+    """
+    gcs_path = f"{GCP_ADSB_TMPDIR}/{int(time.timestamp())}_{flight_level}.adsb.pq"
+    return pd.read_parquet(gcs_path)
+
+
 def apply_horizontal_buffer(pcr: xr.DataArray, size: int) -> xr.DataArray:
     """Apply horizontal buffering to forecast PCR.
 
@@ -115,7 +183,6 @@ def apply_horizontal_buffer(pcr: xr.DataArray, size: int) -> xr.DataArray:
         buffered,
         dims=pcr.dims,
         coords=pcr.coords,
-        attrs=pcr.attrs.update({"buffer_size": size})
     )
 
 
@@ -167,8 +234,8 @@ def calculate_flight_distance(forecast: xr.DataArray, adsb: pd.DataFrame) -> tup
     return dist.where(predicted).sum().item(), dist.sum().item()
 
 
-def calculate_metrics_horizontal_buffer(time: datetime.datetime, flight_level: int, buffer_size: int) -> tuple[str, dict[str, Any]]:
-    """Compute hit and penalty metrics with horizontal buffering only.
+def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, str]:
+    """Compute hit and penalty metrics at a single time and flight level.
 
     Parameters
     ----------
@@ -178,37 +245,44 @@ def calculate_metrics_horizontal_buffer(time: datetime.datetime, flight_level: i
     flight_level: int
         Target flight level
 
-    buffer_size: int
-        Target buffer size
-
     Returns
     -------
-    tuple[str, dict[str, Any]]
-        Metrics with string-formatted time as key (YYYYMMDDHH)
+    tuple[str, str]
+        Key-value pair containing string-formatted time (YYYYMMDDHH) as key
+        and path to GCS output as values.
 
     """
     forecast = open_forecast(time, flight_level)
     adsb = open_adsb(time, flight_level)
     iagos = open_iagos(time, flight_level)
 
-    buffered = apply_horizontal_buffer(forecast["pcr"], buffer_size)
-    area_pred, area_tot = calculate_pcr_area(buffered, iagos)
-    dist_pred, dist_tot = calculate_flight_distance(buffered, adsb)
+    records = []
+    for buffer_size in BUFFERS:
 
-    return (time.strftime("%Y%m%d%H"), {
-        "time": time,
-        "flight_level": flight_level,
-        "horizontal_buffer": buffer_size,
-        "vertical_buffer_up": 0,
-        "vertical_buffer_down": 0,
-        "iagos_pcr_area_in_forecast_pcr": area_pred,
-        "iagos_pcr_area": area_tot,
-        "adsb_dist_in_forecast_pcr": dist_pred,
-        "adsb_dist": dist_tot
-    })
+        buffered = apply_horizontal_buffer(forecast["pcr"], buffer_size)
+        area_pred, area_tot = calculate_pcr_area(buffered, iagos)
+        dist_pred, dist_tot = calculate_flight_distance(buffered, adsb)
+        records.append({
+            "time": time,
+            "flight_level": flight_level,
+            "horizontal_buffer": buffer_size,
+            "vertical_buffer_up": 0,
+            "vertical_buffer_down": 0,
+            "iagos_pcr_area_in_forecast_pcr": area_pred,
+            "iagos_pcr_area": area_tot,
+            "adsb_dist_in_forecast_pcr": dist_pred,
+            "adsb_dist": dist_tot
+        })
+
+    df = pd.DataFrame.from_records(records)
+    sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
+    df.to_parquet(sink)
+
+    key = time.strftime("%Y%m%d%H")
+    return (key, sink)
 
 
-def write_metrics(key: str, results: list[dict[str, Any]]) -> None:
+def write_metrics(key: str, paths: list[str]) -> None:
     """Write results to GCS.
 
     Parameters
@@ -216,11 +290,11 @@ def write_metrics(key: str, results: list[dict[str, Any]]) -> None:
     key : str
         String-formatted time used as grouping key (YYYYMMDDHH)
 
-    results : list[dict[str, Any]]
-        Metrics for different flight levels and buffer sizes
+    paths : str
+        List of GCS paths with per-flight-level files
 
     """
-    df = pd.DataFrame.from_records(results)
+    df = pd.concat((pd.read_parquet(p) for p in sorted(paths)), ignore_index=True)
     sink = f"{GCP_ASSETS}/{key}.pq"
     df.to_parquet(sink)
 
@@ -233,14 +307,14 @@ def main() -> None:
     args = parser.parse_args()
     
     options = get_pipeline_options(args.runner)
-    pcoll = itertools.product(TIMES, FLIGHT_LEVELS, BUFFERS)
+    pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
 
     # compute metrics
     with beam.Pipeline(options=options) as pipeline:
         (
             pipeline
             | "Create PCollection" >> beam.Create(pcoll)
-            | "Compute metrics" >> beam.MapTuple(calculate_metrics_horizontal_buffer)
+            | "Compute metrics" >> beam.MapTuple(calculate_metrics)
             | "Group by time" >> beam.GroupByKey()
             | "Save to GCS" >> beam.MapTuple(write_metrics)
         )

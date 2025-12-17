@@ -12,16 +12,23 @@ import xarray as xr
 from apache_beam.options.pipeline_options import PipelineOptions
 from google.cloud import secretmanager
 
+from pycontrails.physics import units
 from pycontrails.utils import coroutines, temp
 
 
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-06-01 00:00", "2024-06-07 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
+
+#: Path to /v0 forecast zarr store
+V0_FORECAST_ZARR = "gs://contrails-301217-contrail-grid/v3/cocip-grid-hres.zarr"
+
+#: Start time for continuous /v1 forecast
+V1_FORECAST_START = datetime.datetime(2024, 6, 1, 0)
 
 #: GCP buckets for temporary Beam files
 BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
@@ -98,6 +105,8 @@ def get_secret(name: str) -> str:
 async def get_forecast(time: datetime.datetime, flight_level: int, sink: str) -> None:
     """Get forecast at a single level and time.
 
+    Uses the /v1 forecast starting June 1 2024 and the /v0 forecast earlier.
+
     Parameters
     ----------
     time : datetime.datetime
@@ -106,13 +115,14 @@ async def get_forecast(time: datetime.datetime, flight_level: int, sink: str) ->
     flight_level : int
         Target flight level
 
-    key : str
-        Contrails API key
-
     sink : str
         Path where forecast netcdf file should be saved
 
     """
+    if time < V1_FORECAST_START:
+        get_v0_forecast(time, flight_level, sink)
+        return
+
     url = "https://api.contrails.org/v1/grids"
     params = {
         "aircraft_class": "default",
@@ -127,6 +137,30 @@ async def get_forecast(time: datetime.datetime, flight_level: int, sink: str) ->
             content = await resp.read()
             with open(sink, "wb") as f:
                 f.write(content)
+
+
+def get_v0_forecast(time: datetime.datetime, flight_level: int, sink: str) -> None:
+    """Get v0 forecast at a single level and time.
+
+    Parameters
+    ----------
+    time : datetime.datetime
+        Target time
+
+    flight_level : int
+        Target flight level
+
+    sink : str
+        Path where forecast netcdf file should be saved
+
+    """
+    ds = xr.open_zarr(V0_FORECAST_ZARR)
+    ds = ds[["ef_per_m"]]
+    ds = ds.sel(time=[time], flight_level=[flight_level], aircraft_type="B738")
+    ds = ds.drop("aircraft_type")
+    ds = ds.assign_coords(flight_level=units.ft_to_pl(ds["flight_level"] * 100.0))
+    ds = ds.rename(flight_level="level")
+    ds.to_netcdf(sink)
 
 
 def preprocess_forecast(time: datetime.datetime, flight_level: int) -> None:
@@ -152,29 +186,6 @@ def preprocess_forecast(time: datetime.datetime, flight_level: int) -> None:
         with temp.temp_file() as tmp:
             ds[["pcr"]].to_netcdf(tmp)
             fs.put(tmp, sink)
-
-
-def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
-    """Open preprocessed forecast.
-
-    Parameters
-    ----------
-    time : datetime.datetime
-        Forecast time
-
-    flight_level : int
-        Forecast flight level
-
-    Return
-    ------
-    xr.Dataset
-        Binary PCR forecast
-
-    """
-    gcs_path = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
-    with temp.temp_file() as tmp:
-        gcsfs.GCSFileSystem().get(gcs_path, tmp)
-        return xr.open_dataset(tmp, engine="netcdf4")
 
 
 def main() -> None:

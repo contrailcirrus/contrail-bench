@@ -17,7 +17,7 @@ from pycontrails.physics import constants, thermo, units
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-06-01 00:00", "2024-06-07 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -140,7 +140,11 @@ def preprocess_iagos(time: datetime.datetime) -> None:
     rhi = thermo.rhi(specific_humidity, air_temperature, air_pressure)
 
     pcr = (rh > rh_crit_sac) & (rhi > 1.0)
-    df["pcr"] = pcr
+    quality_mask = (
+        (df["h2o_gas_validity_flag"] == 0) &
+        (df["air_temperature_validity_flag"] == 0)
+    ).values
+    df["pcr"] = pcr & quality_mask
     df["altitude_ft"] = units.m_to_ft(df["altitude_baro_m"])
 
     longitude = np.linspace(-180.0, 179.75, 1440)  # 0.25 degrees
@@ -183,27 +187,6 @@ def preprocess_iagos(time: datetime.datetime) -> None:
 
         out = pd.DataFrame({"longitude": longitude[mask], "latitude": latitude[mask], "pcr_count": count[mask]})
         out.to_parquet(sink)
-
-
-def open_iagos(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
-    """Open preprocessed IAGOS PCR observations.
-
-    Parameters
-    ----------
-    time : datetime.datetime
-        Target time
-
-    flight_level : int
-        Target flight level
-
-    Return
-    ------
-    pd.DataFrame
-        Preprocessed IAGOS PCR observations
-
-    """
-    gcs_path = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.iagos.pq"
-    return pd.read_parquet(gcs_path)
 
 
 def main() -> None:

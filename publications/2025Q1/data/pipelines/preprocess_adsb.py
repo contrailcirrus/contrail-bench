@@ -16,7 +16,7 @@ from pycontrails.core import Fleet
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-06-01 00:00", "2024-06-07 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -130,13 +130,13 @@ def preprocess_adsb(time: datetime.datetime) -> None:
     """
     df = get_adsb(time)
 
-    # Resample from ~1 min to 4 s.
+    # Resample from ~1 min to 10 s.
     # Otherwise flights can cross entire grid cells between waypoints!
     # Refine time mask after resampling.
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=UserWarning, message="Method 'resample_and_fill'")
         warnings.filterwarnings("ignore", category=UserWarning, message="Empty flight found")
-        fleet = Fleet(data=df, altitude_ft=df["altitude_baro"], time=df["timestamp"]).resample_and_fill("4s")
+        fleet = Fleet(data=df, altitude_ft=df["altitude_baro"], time=df["timestamp"]).resample_and_fill("10s")
     target = pd.Timestamp(time)
     start = target - pd.Timedelta(minutes=30)
     end = target + pd.Timedelta(minutes=30)
@@ -185,27 +185,6 @@ def preprocess_adsb(time: datetime.datetime) -> None:
 
         out = pd.DataFrame({"longitude": longitude[mask], "latitude": latitude[mask], "flight_distance": dist[mask]})
         out.to_parquet(sink)
-
-
-def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
-    """Open preprocessed ADSB flight distance.
-
-    Parameters
-    ----------
-    time : datetime.datetime
-        Target time
-
-    flight_level : int
-        Target flight level
-
-    Return
-    ------
-    pd.DataFrame
-        Preprocessed ADSB flight distance
-
-    """
-    gcs_path = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.adsb.pq"
-    return pd.read_parquet(gcs_path)
 
 
 def main() -> None:
