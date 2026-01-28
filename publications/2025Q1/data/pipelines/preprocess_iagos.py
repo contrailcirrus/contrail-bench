@@ -22,7 +22,7 @@ TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pyda
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
-#: Vertical resolution (m) used for bucketing observations and ADSB data
+#: Vertical resolution (ft) used for bucketing observations and ADSB data
 VERTICAL_RESOLUTION = 250.0
 
 #: GCP buckets for temporary Beam files
