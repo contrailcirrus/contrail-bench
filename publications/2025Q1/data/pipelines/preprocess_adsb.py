@@ -16,7 +16,7 @@ from pycontrails.core import Fleet
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -29,7 +29,7 @@ BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
 
 #: GCP bucket for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/adsb"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/adsb"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
