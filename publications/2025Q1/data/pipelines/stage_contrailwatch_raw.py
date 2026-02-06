@@ -30,8 +30,17 @@ logger.setLevel("INFO")
 #: Time range
 TIMES = (datetime.datetime(2024, 12, 1, 0, 0), datetime.datetime(2024, 12, 31, 23, 0))
 
-#: ContrailWatch rate limit
-CONTRAILWATCH_REQUESTS_PER_MINUTE = 1000
+#: ContrailWatch batch size (flights per query)
+CONTRAILWATCH_BATCH_SIZE = 100
+
+#: ContrailWatch burst limit (queries per minute)
+CONTRAILWATCH_BURST_LIMIT = 1000
+
+#: Status codes on which to retry bursts of queries
+CONTRAILWATCH_RETRY_ON = (503,)
+
+#: Retry backoff (seconds)
+CONTRAILWATCH_RETRY_BACKOFF = 60
 
 #: GCP bucket for temporary assets
 GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrailwatch-raw"
@@ -190,45 +199,50 @@ async def _batch_get(
     names: Iterable[str],
     key: str,
     session: aiohttp.ClientSession,
-    limiter: aiolimiter.AsyncLimiter,
-    retry_count: int = 0
 ) -> list[dict[str, Any]]:
     """Submit a single batch request to the ContrailWatch API."""
-    async with limiter:
-        url = "https://contrails.googleapis.com/v2/attributions:batchGet"
-        params = tuple(("names", name) for name in names)
-        headers = {"x-goog-api-key": key}
-
-        logger.debug(f"Submitting request for batch starting with {params[0][1]}")
-        async with session.get(url, params=params, headers=headers) as response:
-            contents = await response.json()
-        logger.debug(f"Finished request for batch starting with {params[0][1]}")
+    url = "https://contrails.googleapis.com/v2/attributions:batchGet"
+    params = tuple(("names", name) for name in names)
+    headers = {"x-goog-api-key": key}
+    async with session.get(url, params=params, headers=headers) as response:
+        contents = await response.json()
 
     # only return responses that include attributed contrail segments
     return [att for att in contents["attributions"] if "segments" in att]
 
 
-async def _batch_get_all(names: list[str], limiter: aiolimiter.AsyncLimiter) -> list[dict[str, Any]]:
-    """Submit all batch requests required for a set of flights."""
-    key = get_secret("google-contrails-api-key")
-    batch_size = 100
-    limiter = aiolimiter.AsyncLimiter(CONTRAILWATCH_REQUESTS_PER_MINUTE)
-    async with aiohttp.ClientSession(raise_for_status=True) as session:
-        tasks = [_batch_get(batch, key, session, limiter) for batch in itertools.batched(names, batch_size)]
-        results = await asyncio.gather(*tasks)
-        return list(itertools.chain.from_iterable(results))
+async def _submit_burst(
+    names: Iterable[str],
+    limiter: aiolimiter.AsyncLimiter
+) -> list[dict[str, Any]]:
+    """Submit a single burst of batch requests."""
+    async with limiter:
+        try:
+            key = get_secret("google-contrails-api-key")
+            async with aiohttp.ClientSession(raise_for_status=True) as session:
+                batches = itertools.batched(names, CONTRAILWATCH_BATCH_SIZE)
+                tasks = [_batch_get(batch, key, session) for batch in batches]
+                results = await asyncio.gather(*tasks)
+            return list(itertools.chain.from_iterable(results))
+        
+        except aiohttp.ClientResponseError as e:
+            if e.status in CONTRAILWATCH_RETRY_ON:
+                logger.warning(f"Burst failed ({e.status} {e.message}). Retrying after backoff.")
+                await asyncio.sleep(CONTRAILWATCH_RETRY_BACKOFF)
+                return await _submit_burst(names, limiter)
+            raise e
 
 
-def get_attributions(params: list[str], limiter: aiolimiter.AsyncLimiter) -> pd.DataFrame:
+async def get_attributions(params: Iterable[str], limiter: aiolimiter.AsyncLimiter) -> pd.DataFrame:
     """Get DataFrame with attributed flight segments.
 
     Parameters
     ----------
     params : list[str]
-        Query parameters
+        Parameters for a single burst of queries
 
     limiter : aiolimiter.AsyncLimiter
-        Rate limiter for ContrailWatch queries
+        Rate limiter for ContrailWatch bursts
 
     Returns
     -------
@@ -237,7 +251,7 @@ def get_attributions(params: list[str], limiter: aiolimiter.AsyncLimiter) -> pd.
         and the segment start and end time.
     
     """
-    result = coroutines.run(_batch_get_all(params, limiter))
+    result = await _submit_burst(params, limiter)
 
     if len(result) == 0:
         return pd.DataFrame(columns=["icao_address", "callsign", "start", "end"])
@@ -266,26 +280,36 @@ def get_attributions(params: list[str], limiter: aiolimiter.AsyncLimiter) -> pd.
     return pd.DataFrame(segment_list)
 
 
-def stage_contrailwatch_raw() -> None:
+async def stage_contrailwatch_raw() -> None:
     """Stage raw ContrailWatch attributions."""
-    
+
+    limiter = aiolimiter.AsyncLimiter(1)  # limit to 1 burst per minute
     meta = get_adsb_metadata()
-    limiter = aiolimiter.AsyncLimiter(CONTRAILWATCH_REQUESTS_PER_MINUTE)
+    
     for date, group in meta.groupby(meta["departure_scheduled_time"].dt.date):
         
         params = get_query_parameters(group)
+        num_queries = (len(params) + CONTRAILWATCH_BATCH_SIZE - 1) // CONTRAILWATCH_BATCH_SIZE
         date_str = date.strftime("%Y-%m-%d")
+        sink = f"{GCP_TMPDIR}/{date_str}.pq"
+        logger.info(f"Querying {len(params)} flights ({num_queries} queries) departing {date_str}")
 
-        logger.info(f"Querying {len(params)} flights ({(len(params) + 99) // 100} queries) departing {date_str}")
-        attributions = get_attributions(params, limiter)
-        
-        sink = f"{GCP_TMPDIR}/{date.strftime('%Y-%m-%d')}.pq"
+        if num_queries <= CONTRAILWATCH_BURST_LIMIT:
+            attributions = await get_attributions(params, limiter)
+            attributions.to_parquet(sink)
+            continue
+
+        logger.info("Large number of flights requires multiple bursts.")
+        bursts = itertools.batched(params, CONTRAILWATCH_BATCH_SIZE * CONTRAILWATCH_BURST_LIMIT)
+        tasks = [get_attributions(burst, limiter) for burst in bursts]
+        attributions_list = await asyncio.gather(*tasks)
+        attributions = pd.concat(attributions_list, axis="index")
         attributions.to_parquet(sink)
 
 
 def main() -> None:
     """Program entrypoint."""
-    stage_contrailwatch_raw()
+    coroutines.run(stage_contrailwatch_raw())
 
 
 if __name__ == "__main__":
