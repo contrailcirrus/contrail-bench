@@ -9,6 +9,7 @@ import logging
 import re
 from typing import Any, Iterable
 
+import gcsfs
 import pandas as pd
 from google.cloud import bigquery, secretmanager
 
@@ -28,12 +29,12 @@ logger.setLevel("INFO")
 # Pipeline parameters
 
 #: Time range
-TIMES = (datetime.datetime(2024, 12, 1, 0, 0), datetime.datetime(2024, 12, 31, 23, 0))
+TIMES = (datetime.datetime(2024, 1, 1, 0, 0), datetime.datetime(2024, 12, 31, 23, 0))
 
 #: ContrailWatch batch size (flights per query)
 CONTRAILWATCH_BATCH_SIZE = 100
 
-#: ContrailWatch burst limit (queries per minute)
+#: Limit size of ContrailWatch bursts
 CONTRAILWATCH_BURST_LIMIT = 1000
 
 #: Status codes on which to retry bursts of queries
@@ -91,6 +92,12 @@ def get_adsb_metadata() -> pd.DataFrame:
         ADSB metadata.
 
     """
+    cache_path = f"{GCP_TMPDIR}/adsb_metadata.pq"
+    try:
+        return pd.read_parquet(cache_path)
+    except FileNotFoundError:
+        logger.warning("ADSB metadata not found in GCS. Submitting BQ query...")
+
     start = TIMES[0] - pd.Timedelta(minutes=30)
     end = TIMES[1] + pd.Timedelta(minutes=30)
 
@@ -122,12 +129,14 @@ def get_adsb_metadata() -> pd.DataFrame:
     df = df[df["departure_airport_icao"].isin(airport_iata_to_icao.index)]
     df["departure_airport_iata"] = df["departure_airport_icao"].map(airport_iata_to_icao)
 
-    return df[[
+    df = df[[
         "airline_iata",
         "flight_number",
         "departure_scheduled_time",
         "departure_airport_iata"
     ]]
+    df.to_parquet(cache_path)
+    return df
 
 
 def _query_param(row: pd.Series) -> str | None:
@@ -288,10 +297,14 @@ async def stage_contrailwatch_raw() -> None:
     
     for date, group in meta.groupby(meta["departure_scheduled_time"].dt.date):
         
-        params = get_query_parameters(group)
-        num_queries = (len(params) + CONTRAILWATCH_BATCH_SIZE - 1) // CONTRAILWATCH_BATCH_SIZE
         date_str = date.strftime("%Y-%m-%d")
         sink = f"{GCP_TMPDIR}/{date_str}.pq"
+        if gcsfs.GCSFileSystem().exists(sink):
+            logger.debug(f"Query results for flights departing {date_str} already exist")
+            continue
+
+        params = get_query_parameters(group)
+        num_queries = (len(params) + CONTRAILWATCH_BATCH_SIZE - 1) // CONTRAILWATCH_BATCH_SIZE
         logger.info(f"Querying {len(params)} flights ({num_queries} queries) departing {date_str}")
 
         if num_queries <= CONTRAILWATCH_BURST_LIMIT:

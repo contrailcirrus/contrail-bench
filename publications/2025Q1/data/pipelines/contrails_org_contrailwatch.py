@@ -19,7 +19,7 @@ from pycontrails.utils import temp
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-12-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -32,12 +32,13 @@ BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
 
 #: GCP buckets for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org-iagos"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org-contrailwatch"
 GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org"
-GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/iagos"
+GCP_ADSB_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/adsb"
+GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrailwatch"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/contrails-org-iagos"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/contrails-org-contrailwatch"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -64,7 +65,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
     if runner == "dataflow":
         return PipelineOptions(
             runner="dataflow",
-            job_name="contrail-bench-2025q1-contrails-org-iagos",
+            job_name="contrail-bench-2025q1-contrails-org-contrailwatch",
             project="contrails-301217",
             region="us-east1",
             temp_location=BEAM_TEMP,
@@ -122,7 +123,28 @@ def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFram
         Preprocessed PCR observations
 
     """
-    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.iagos.pq"
+    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.contrailwatch.pq"
+    return pd.read_parquet(gcs_path)
+
+
+def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
+    """Open preprocessed ADSB flight distance.
+
+    Parameters
+    ----------
+    time : datetime.datetime
+        Target time
+
+    flight_level : int
+        Target flight level
+
+    Return
+    ------
+    pd.DataFrame
+        Preprocessed ADSB flight distance
+
+    """
+    gcs_path = f"{GCP_ADSB_TMPDIR}/{int(time.timestamp())}_{flight_level}.adsb.pq"
     return pd.read_parquet(gcs_path)
 
 
@@ -161,8 +183,56 @@ def apply_horizontal_buffer(pcr: xr.DataArray, size: int) -> xr.DataArray:
     )
 
 
+def calculate_pcr_area(forecast: xr.DataArray, observed: pd.DataFrame) -> tuple[float, float]:
+    """Calculate observed PCR areas.
+
+    Parameters
+    ----------
+    forecast : xr.DataArray
+        PCR forecasts
+
+    observed: pd.DataFrame
+        Locations of PCR observations
+
+    Returns
+    -------
+    tuple[float, float]
+        Observed PCR area inside forecast PCRs and total observed PCR area
+
+    """
+    target_lon = xr.DataArray(observed["longitude"], dims="observed")
+    target_lat = xr.DataArray(observed["latitude"], dims="observed")
+    area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observed")
+    predicted = forecast.sel(longitude=target_lon, latitude=target_lat, method="nearest")
+    return area.where(predicted).sum().item(), area.sum().item()
+
+
+def calculate_flight_distance(forecast: xr.DataArray, adsb: pd.DataFrame) -> tuple[float, float]:
+    """Calculate flight distance penalty.
+
+    Parameters
+    ----------
+    forecast : xr.DataArray
+        PCR forecasts
+
+    adsb: pd.DataFrame
+        Flight distance through forecast grid cells
+
+    Returns
+    -------
+    tuple[float, float]
+        Flight distance through PCRs and total flight distance
+
+    """
+    target_lon = xr.DataArray(adsb["longitude"], dims="segment")
+    target_lat = xr.DataArray(adsb["latitude"], dims="segment")
+    dist = xr.DataArray(adsb["flight_distance"], dims="segment")
+    predicted = forecast.sel(longitude=target_lon, latitude=target_lat, method="nearest")
+    return dist.where(predicted).sum().item(), dist.sum().item()
+
+
 def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, str]:
-    """Compute metrics at a single time and flight level.
+    """Compute hit and penalty metrics at a single time and flight level.
 
     Parameters
     ----------
@@ -180,21 +250,15 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
 
     """
     forecast = open_forecast(time, flight_level)
+    adsb = open_adsb(time, flight_level)
     observed = open_observations(time, flight_level)
-    
-    pcr = forecast["pcr"].compute()
-    target_lon = xr.DataArray(observed["longitude"], dims="observation")
-    target_lat = xr.DataArray(observed["latitude"], dims="observation")
-    area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observation")
-    area_tot = area.sum().item()
 
     records = []
     for buffer_size in BUFFERS:
 
-        buffered = apply_horizontal_buffer(pcr, buffer_size)
-        predicted = buffered.sel(longitude=target_lon, latitude=target_lat)
-        area_pred = area.where(predicted).sum().item()
-
+        buffered = apply_horizontal_buffer(forecast["pcr"], buffer_size)
+        area_pred, area_tot = calculate_pcr_area(buffered, observed)
+        dist_pred, dist_tot = calculate_flight_distance(buffered, adsb)
         records.append({
             "time": time,
             "flight_level": flight_level,
@@ -203,6 +267,8 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
             "vertical_buffer_down": 0,
             "observed_pcr_area_in_forecast_pcr": area_pred,
             "observed_pcr_area": area_tot,
+            "adsb_dist_in_forecast_pcr": dist_pred,
+            "adsb_dist": dist_tot
         })
 
     df = pd.DataFrame.from_records(records)
