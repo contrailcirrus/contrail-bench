@@ -98,7 +98,7 @@ def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
         Binary PCR forecast
 
     """
-    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
+    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.nc"
     with temp.temp_file() as tmp:
         gcsfs.GCSFileSystem().get(gcs_path, tmp)
         return xr.open_dataset(tmp, engine="netcdf4")
@@ -121,7 +121,7 @@ def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
         Preprocessed ADSB flight distance
 
     """
-    gcs_path = f"{GCP_ADSB_TMPDIR}/{int(time.timestamp())}_{flight_level}.adsb.pq"
+    gcs_path = f"{GCP_ADSB_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
     return pd.read_parquet(gcs_path)
 
 

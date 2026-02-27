@@ -19,7 +19,7 @@ from pycontrails.utils import temp
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -99,7 +99,7 @@ def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
         Binary PCR forecast
 
     """
-    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
+    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.nc"
     with temp.temp_file() as tmp:
         gcsfs.GCSFileSystem().get(gcs_path, tmp)
         return xr.open_dataset(tmp, engine="netcdf4")
@@ -122,7 +122,7 @@ def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFram
         Preprocessed PCR observations
 
     """
-    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.iagos.pq"
+    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
     return pd.read_parquet(gcs_path)
 
 
@@ -183,6 +183,7 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     observed = open_observations(time, flight_level)
     
     pcr = forecast["pcr"].compute()
+    observed = observed[observed["pcr_distance"] > 0]
     target_lon = xr.DataArray(observed["longitude"], dims="observation")
     target_lat = xr.DataArray(observed["latitude"], dims="observation")
     area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observation")

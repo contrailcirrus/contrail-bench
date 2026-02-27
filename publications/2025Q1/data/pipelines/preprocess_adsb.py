@@ -15,13 +15,16 @@ from pycontrails.core import Fleet
 
 # Pipeline parameters
 
-#: Forecast times
+#: GCS path to cleaned ADS-B data
+GCS_TEMPLATE = "gs://contrails-301217-gaia-trajectories/2024-Spire-Aireon/enhanced/accept/waypoints/{}-waypoints.pq"
+
+#: Target times
 TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
-#: Forecast flight levels
+#: Target flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
-#: Vertical resolution (m) used for bucketing observations and ADSB data
+#: Vertical resolution (m) used for bucketing segments
 VERTICAL_RESOLUTION = 250.0
 
 #: GCP buckets for temporary Beam files
@@ -92,8 +95,7 @@ def get_adsb(time: datetime.datetime) -> pd.DataFrame:
     start = target - pd.Timedelta(minutes=30)
     end = target + pd.Timedelta(minutes=30)
 
-    gcs_path = "gs://contrails-301217-gaia/2024-Spire-Aireon/enhanced/accept/waypoints/{}-waypoints.pq"
-    df = pd.read_parquet(gcs_path.format(start.floor("1d").strftime("%Y-%m-%d")), columns=[
+    df = pd.read_parquet(GCS_TEMPLATE.format(start.floor("1d").strftime("%Y-%m-%d")), columns=[
         "flight_id",
         "longitude",
         "latitude",
@@ -104,7 +106,7 @@ def get_adsb(time: datetime.datetime) -> pd.DataFrame:
         df = pd.concat([
             df, 
             pd.read_parquet(
-                gcs_path.format(end.floor("1d").strftime("%Y-%m-%d")),
+                GCS_TEMPLATE.format(end.floor("1d").strftime("%Y-%m-%d")),
                 columns=["flight_id", "longitude", "latitude", "altitude_baro", "timestamp"]
         )], axis="index")
 
@@ -158,7 +160,7 @@ def preprocess_adsb(time: datetime.datetime) -> None:
 
     for flight_level in FLIGHT_LEVELS:
         
-        sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.adsb.pq"
+        sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
 
         df = fleet.filter(
             (fleet["altitude_ft"] >= flight_level * 100.0 - VERTICAL_RESOLUTION) &

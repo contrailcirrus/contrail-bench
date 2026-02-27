@@ -16,7 +16,6 @@ from google.cloud import bigquery, secretmanager
 from pycontrails.core import airports
 from pycontrails.utils import coroutines
 
-
 logging.basicConfig(
     level="WARNING",
     format="[%(asctime)s.%(msecs)03d] [%(levelname)s] [%(module)s] [%(funcName)s] %(message)s",
@@ -38,7 +37,7 @@ CONTRAILWATCH_BATCH_SIZE = 100
 CONTRAILWATCH_BURST_LIMIT = 1000
 
 #: Status codes on which to retry bursts of queries
-CONTRAILWATCH_RETRY_ON = (503,)
+CONTRAILWATCH_RETRY_ON = (500, 503,)
 
 #: Retry backoff (seconds)
 CONTRAILWATCH_RETRY_BACKOFF = 60
@@ -223,7 +222,7 @@ async def _batch_get(
 async def _submit_burst(
     names: Iterable[str],
     limiter: aiolimiter.AsyncLimiter
-) -> list[dict[str, Any]]:
+) -> list[dict[str, Any]] | None:
     """Submit a single burst of batch requests."""
     async with limiter:
         try:
@@ -238,7 +237,7 @@ async def _submit_burst(
             if e.status in CONTRAILWATCH_RETRY_ON:
                 logger.warning(f"Burst failed ({e.status} {e.message}). Retrying after backoff.")
                 await asyncio.sleep(CONTRAILWATCH_RETRY_BACKOFF)
-                return await _submit_burst(names, limiter)
+                return None
             raise e
 
 
@@ -260,9 +259,11 @@ async def get_attributions(params: Iterable[str], limiter: aiolimiter.AsyncLimit
         and the segment start and end time.
     
     """
-    result = await _submit_burst(params, limiter)
+    while (result := await _submit_burst(params, limiter)) is None:
+        pass
 
     if len(result) == 0:
+        logger.warning("No attributed segments returned from ContrailWatch API")
         return pd.DataFrame(columns=["icao_address", "callsign", "start", "end"])
 
     start = TIMES[0] - pd.Timedelta(minutes=30)
@@ -296,7 +297,7 @@ async def stage_contrailwatch_raw() -> None:
     meta = get_adsb_metadata()
     
     for date, group in meta.groupby(meta["departure_scheduled_time"].dt.date):
-        
+
         date_str = date.strftime("%Y-%m-%d")
         sink = f"{GCP_TMPDIR}/{date_str}.pq"
         if gcsfs.GCSFileSystem().exists(sink):

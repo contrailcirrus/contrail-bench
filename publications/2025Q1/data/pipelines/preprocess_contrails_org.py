@@ -181,13 +181,10 @@ def preprocess_forecast(time: datetime.datetime, flight_level: int) -> None:
         pcr = ds["ef_per_m"] != 0
         pcr.attrs = {"long_name": "Persistent contrail region flag", "units": "1"}
         ds["pcr"] = pcr
-        swcr = ds["ef_per_m"] >= 5e8
-        swcr.attrs = {"long_name": "Strongly warming contrail region flag", "units": "1", "ef_threshold": "5e8 J/m"}
-        ds["swcr"] = swcr
         fs = gcsfs.GCSFileSystem()
-        sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
+        sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.nc"
         with temp.temp_file() as tmp:
-            ds[["pcr", "swcr"]].to_netcdf(tmp)
+            ds[["pcr"]].to_netcdf(tmp)
             fs.put(tmp, sink)
 
 

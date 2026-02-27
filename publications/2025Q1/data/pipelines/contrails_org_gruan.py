@@ -1,4 +1,4 @@
-"""Benchmark Contrails.org forecast using GOES attributions."""
+"""Benchmark Contrails.org forecast using GRUAN observations."""
 
 import argparse
 import datetime
@@ -19,7 +19,7 @@ from pycontrails.utils import temp
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-05-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -32,12 +32,12 @@ BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
 
 #: GCP buckets for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org-contrailwatch"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org-gruan"
 GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org"
-GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrailwatch"
+GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/gruan"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/contrails-org-contrailwatch"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/contrails-org-gruan"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -64,7 +64,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
     if runner == "dataflow":
         return PipelineOptions(
             runner="dataflow",
-            job_name="contrail-bench-2025q1-contrails-org-contrailwatch",
+            job_name="contrail-bench-2025q1-contrails-org-gruan",
             project="contrails-301217",
             region="us-east1",
             temp_location=BEAM_TEMP,
@@ -99,7 +99,7 @@ def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
         Binary PCR forecast
 
     """
-    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.nc"
+    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
     with temp.temp_file() as tmp:
         gcsfs.GCSFileSystem().get(gcs_path, tmp)
         return xr.open_dataset(tmp, engine="netcdf4")
@@ -122,7 +122,7 @@ def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFram
         Preprocessed PCR observations
 
     """
-    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
+    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.gruan.pq"
     return pd.read_parquet(gcs_path)
 
 
@@ -181,8 +181,9 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     """
     forecast = open_forecast(time, flight_level)
     observed = open_observations(time, flight_level)
-    
+
     pcr = forecast["pcr"].compute()
+    observed = observed[observed["pcr_count"] > 0]
     target_lon = xr.DataArray(observed["longitude"], dims="observation")
     target_lat = xr.DataArray(observed["latitude"], dims="observation")
     area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observation")
@@ -239,6 +240,8 @@ def main() -> None:
     
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
+
+    calculate_metrics(TIMES[0], FLIGHT_LEVELS[0])
 
     # compute metrics
     with beam.Pipeline(options=options) as pipeline:

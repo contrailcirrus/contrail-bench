@@ -16,14 +16,17 @@ from pycontrails.physics import constants, thermo, units
 
 # Pipeline parameters
 
-#: Forecast times
-TIMES = pd.date_range("2024-01-01 00:00", "2024-09-30 23:00", freq="1h").to_pydatetime().tolist()
+#: Target times
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
-#: Forecast flight levels
+#: Target flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
 #: Vertical resolution (ft) used for bucketing observations and ADSB data
 VERTICAL_RESOLUTION = 250.0
+
+#: Engine efficiency for SAC calculation
+ENGINE_EFFICIENCY = 0.3
 
 #: GCP buckets for temporary Beam files
 BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
@@ -101,6 +104,7 @@ def get_iagos(time: datetime.datetime) -> pd.DataFrame:
         "pressure",
         "altitude_baro_m",
         "time",
+        "segment_length",
         "air_temperature",
         "air_temperature_std_err",
         "air_temperature_validity_flag",
@@ -127,13 +131,10 @@ def preprocess_iagos(time: datetime.datetime) -> None:
     """
     df = get_iagos(time)
 
-    engine_efficiency = 0.3
-    fuel = JetA()
-
     air_temperature = df["air_temperature"].values
     specific_humidity = 1e-6 * df["h2o_gas_ppmv"].values * constants.R_d / constants.R_v
     air_pressure = df["pressure"].values
-    G = sac.slope_mixing_line(specific_humidity, air_pressure, engine_efficiency, fuel.ei_h2o, fuel.q_fuel)
+    G = sac.slope_mixing_line(specific_humidity, air_pressure, ENGINE_EFFICIENCY, JetA.ei_h2o, JetA.q_fuel)
     T_sat_liquid_ = sac.T_sat_liquid(G)
     rh_crit_sac = sac.rh_critical_sac(air_temperature, T_sat_liquid_, G)
     rh = thermo.rh(specific_humidity, air_temperature, air_pressure)
@@ -144,8 +145,9 @@ def preprocess_iagos(time: datetime.datetime) -> None:
         (df["h2o_gas_validity_flag"] == 0) &
         (df["air_temperature_validity_flag"] == 0)
     ).values
-    df["pcr"] = pcr & quality_mask
-    df["altitude_ft"] = units.m_to_ft(df["altitude_baro_m"])
+    df["pcr"] = pcr
+    df["quality_mask"] = quality_mask
+    df["altitude_ft"] = df["altitude_baro_m"]
 
     longitude = np.linspace(-180.0, 179.75, 1440)  # 0.25 degrees
     latitude = np.linspace(-80.0, 80.0, 641)  # 0.25 degrees
@@ -158,9 +160,9 @@ def preprocess_iagos(time: datetime.datetime) -> None:
     
     for flight_level in FLIGHT_LEVELS:
         
-        sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.iagos.pq"
+        sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
 
-        mask = df["altitude_ft"].between(
+        mask = df["quality_mask"] & df["altitude_ft"].between(
             flight_level * 100.0 - VERTICAL_RESOLUTION,
             flight_level * 100.0 + VERTICAL_RESOLUTION,
             inclusive="both"
@@ -168,24 +170,37 @@ def preprocess_iagos(time: datetime.datetime) -> None:
         subset = df[mask].copy()
         
         if len(subset) == 0:
-            out = pd.DataFrame(columns=["longitude", "latitude", "pcr_count"])
+            out = pd.DataFrame(columns=["longitude", "latitude", "pcr_distance", "total_distance"])
             out.to_parquet(sink)
             continue
 
         mask = df["longitude"] > longitude_bnds[-1]
         subset.loc[mask, "longitude"] = subset.loc[mask, "longitude"] - 360.0
-        count, _, _, _ = binned_statistic_2d(
+        pcr_dist, _, _, _ = binned_statistic_2d(
             subset["longitude"].values,
             subset["latitude"].values,
-            subset["pcr"].values,
+            subset["segment_length"].where(subset["pcr"], other=0.0).values,
+            bins=[longitude_bnds, latitude_bnds],
+            statistic="sum"
+        )
+        total_dist, _, _, _ = binned_statistic_2d(
+            subset["longitude"].values,
+            subset["latitude"].values,
+            subset["segment_length"].values,
             bins=[longitude_bnds, latitude_bnds],
             statistic="sum"
         )
 
-        count = count.ravel()
-        mask = count > 0
+        pcr_dist = pcr_dist.ravel()
+        total_dist = total_dist.ravel()
+        mask = (pcr_dist > 0) | (total_dist > 0)
 
-        out = pd.DataFrame({"longitude": longitude[mask], "latitude": latitude[mask], "pcr_count": count[mask]})
+        out = pd.DataFrame({
+            "longitude": longitude[mask],
+            "latitude": latitude[mask],
+            "pcr_distance": pcr_dist[mask],
+            "total_distance": total_dist[mask]
+        })
         out.to_parquet(sink)
 
 
@@ -198,6 +213,8 @@ def main() -> None:
     
     options = get_pipeline_options(args.runner)
     pcoll = TIMES
+
+    preprocess_iagos(datetime.datetime(2024, 6, 1, 10))
     
     with beam.Pipeline(options=options) as pipeline:
         (
