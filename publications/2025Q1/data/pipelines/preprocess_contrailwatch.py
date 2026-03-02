@@ -236,7 +236,7 @@ def preprocess_contrailwatch(time: datetime.datetime) -> None:
         logger.warning(f"No attributed flight segments found for {time}")
         for flight_level in FLIGHT_LEVELS:
             sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
-            out = pd.DataFrame(columns=["longitude", "latitude", "flight_distance"])
+            out = pd.DataFrame(columns=["longitude", "latitude", "attributed_flight_distance"])
             out.to_parquet(sink)
         return
 
@@ -282,7 +282,7 @@ def preprocess_contrailwatch(time: datetime.datetime) -> None:
         )]
 
         if len(df) == 0:
-            out = pd.DataFrame(columns=["longitude", "latitude", "flight_distance"])
+            out = pd.DataFrame(columns=["longitude", "latitude", "attributed_flight_distance"])
             out.to_parquet(sink)
             continue
 
