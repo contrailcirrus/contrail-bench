@@ -247,16 +247,18 @@ def preprocess_contrailwatch(time: datetime.datetime) -> None:
         warnings.filterwarnings("ignore", category=UserWarning, message="Method 'resample_and_fill'")
         warnings.filterwarnings("ignore", category=UserWarning, message="Empty flight found")
         fleet = Fleet(data=df, altitude_ft=df["altitude_baro"], time=df["timestamp"]).resample_and_fill("10s")
-    target = pd.Timestamp(time)
-    start = target - pd.Timedelta(minutes=30)
-    end = target + pd.Timedelta(minutes=30)
-    fleet = fleet.filter((fleet["time"] >= start) & (fleet["time"] < end))
 
-    # attach segment length and altitude in feet
+    # Must compute segment length *before* filtering due to pycontrails bug
     segment_length = fleet.segment_length()
     segment_length[np.isnan(segment_length)] = 0.0
     fleet["segment_length"] = segment_length
     fleet["altitude_ft"] = fleet.altitude_ft
+
+    # Can refine time mask now
+    target = pd.Timestamp(time)
+    start = target - pd.Timedelta(minutes=30)
+    end = target + pd.Timedelta(minutes=30)
+    fleet = fleet.filter((fleet["time"] >= start) & (fleet["time"] < end))
 
     # filter for attributed segments only
     attributed = fleet.dataframe.groupby("flight_id")[fleet.dataframe.columns].apply(
