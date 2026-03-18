@@ -19,7 +19,7 @@ from pycontrails.utils import temp
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-05-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))

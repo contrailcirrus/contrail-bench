@@ -1,4 +1,4 @@
-"""Benchmark Google forecast using GOES attributions."""
+"""Benchmark Contrails.org forecast using GOES attributions."""
 
 import argparse
 import datetime
@@ -10,33 +10,37 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from apache_beam.options.pipeline_options import PipelineOptions
+from scipy.ndimage import binary_dilation
 
+from pycontrails.physics import constants
 from pycontrails.utils import temp
 
 
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-09-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
-#: Probability threshold
-PROBABILITY_THRESHOLDS = list(np.logspace(-1, -3, 11))
+#: Geographic extent
+EXTENT = (-134, -63, 20, 50)
+
+#: Buffer sizes (grid cells)
+BUFFERS = list(range(11))
 
 #: GCP buckets for temporary Beam files
 BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
 
 #: GCP buckets for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google-gruan-flight-distance"
-GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google"
-GCP_ADSB_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/adsb"
-GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/gruan"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org-contrailwatch-contrailwatch-region"
+GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org"
+GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrailwatch"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/google-gruan-flight-distance"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/contrails-org-contrailwatch-contrailwatch-region"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -63,7 +67,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
     if runner == "dataflow":
         return PipelineOptions(
             runner="dataflow",
-            job_name="contrail-bench-2025q1-google-gruan-flight-distance",
+            job_name="contrail-bench-2025q1-contrails-org-contrailwatch-contrailwatch-region",
             project="contrails-301217",
             region="us-east1",
             temp_location=BEAM_TEMP,
@@ -104,27 +108,6 @@ def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
         return xr.open_dataset(tmp, engine="netcdf4")
 
 
-def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
-    """Open preprocessed ADSB flight distance.
-
-    Parameters
-    ----------
-    time : datetime.datetime
-        Target time
-
-    flight_level : int
-        Target flight level
-
-    Return
-    ------
-    pd.DataFrame
-        Preprocessed ADSB flight distance
-
-    """
-    gcs_path = f"{GCP_ADSB_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
-    return pd.read_parquet(gcs_path)
-
-
 def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
     """Open preprocessed PCR observations.
 
@@ -146,24 +129,39 @@ def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFram
     return pd.read_parquet(gcs_path)
 
 
-def apply_probability_threshold(ppcr: xr.DataArray, threshold: float) -> xr.DataArray:
-    """Apply probability threshold to forecast PCR probability.
+def apply_horizontal_buffer(pcr: xr.DataArray, size: int) -> xr.DataArray:
+    """Apply horizontal buffering to forecast PCR.
 
     Parameters
     ----------
     pcr : xr.DataArray
-        Probabilistic PCR forecast
+        Binary PCR forecast
 
-    threshold : float
-        Probability threshold
+    size : int
+        Size of buffer (forecast grid cells)
 
     Returns
     -------
     xr.DataArray
-        Binary PCR forecast with probability threshold applied
+        Binary PCR forecast with horizontal buffers added
 
     """
-    return ppcr > threshold
+    if size < 1:
+        return pcr
+    
+    structure = np.array([[False, True, False], [True, True, True], [False, True, False]]).reshape((3, 3, 1, 1))
+
+    pad_left = pcr.values[-size:,...]
+    pad_right = pcr.values[:size,...]
+    padded = np.concat((pad_left, pcr.values, pad_right), axis=0)
+    buffered = binary_dilation(padded, structure=structure, iterations=size)
+    buffered = buffered[size:-size]
+
+    return xr.DataArray(
+        buffered,
+        dims=pcr.dims,
+        coords=pcr.coords,
+    )
 
 
 def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, str]:
@@ -185,36 +183,36 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
 
     """
     forecast = open_forecast(time, flight_level)
-    adsb = open_adsb(time, flight_level)
     observed = open_observations(time, flight_level)
     
-    ppcr = forecast["ppcr"].compute()
-    observed = observed[observed["pcr_count"] > 0]
+    # restrict to contrailwatch region
+    lon_min, lon_max, lat_min, lat_max = EXTENT
+    observed = observed[
+        observed["longitude"].between(lon_min, lon_max) & 
+        observed["latitude"].between(lat_min, lat_max)
+    ]
+    
+    pcr = forecast["pcr"].compute()
     target_lon = xr.DataArray(observed["longitude"], dims="observation")
     target_lat = xr.DataArray(observed["latitude"], dims="observation")
-
-    dist = xr.DataArray(
-        adsb.set_index(["longitude", "latitude"])["flight_distance"].reindex(
-            observed.set_index(["longitude", "latitude"]).index,
-            fill_value=0.0
-        ).values,
-        dims="observation"
-    )
-    dist_tot = dist.sum().item()
+    area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observation")
+    area_tot = area.sum().item()
 
     records = []
-    for threshold in PROBABILITY_THRESHOLDS:
+    for buffer_size in BUFFERS:
 
-        pcr = apply_probability_threshold(ppcr, threshold)
-        predicted = pcr.sel(longitude=target_lon, latitude=target_lat)
-        dist_pred = dist.where(predicted).sum().item()
+        buffered = apply_horizontal_buffer(pcr, buffer_size)
+        predicted = buffered.sel(longitude=target_lon, latitude=target_lat)
+        area_pred = area.where(predicted).sum().item()
 
         records.append({
             "time": time,
             "flight_level": flight_level,
-            "probability_threshold": threshold,
-            "flight_distance_in_observed_and_forecast_pcr": dist_pred,
-            "flight_distance_in_observed_pcr": dist_tot,
+            "horizontal_buffer": buffer_size,
+            "vertical_buffer_up": 0,
+            "vertical_buffer_down": 0,
+            "observed_pcr_area_in_forecast_pcr": area_pred,
+            "observed_pcr_area": area_tot,
         })
 
     df = pd.DataFrame.from_records(records)

@@ -1,4 +1,4 @@
-"""Benchmark Google forecast using GOES attributions."""
+"""Benchmark Google forecast using ADSB trajectories."""
 
 import argparse
 import datetime
@@ -22,6 +22,9 @@ TIMES = pd.date_range("2024-09-01 00:00", "2024-12-31 23:00", freq="1h").to_pyda
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
+#: Geographic extent
+EXTENT = (-134, -63, 20, 50)
+
 #: Probability threshold
 PROBABILITY_THRESHOLDS = list(np.logspace(-1, -3, 11))
 
@@ -30,13 +33,12 @@ BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
 
 #: GCP buckets for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google-gruan-flight-distance"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google-adsb-contrailwatch-region"
 GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google"
 GCP_ADSB_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/adsb"
-GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/gruan"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/google-gruan-flight-distance"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/google-adsb-contrailwatch-region"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -63,7 +65,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
     if runner == "dataflow":
         return PipelineOptions(
             runner="dataflow",
-            job_name="contrail-bench-2025q1-google-gruan-flight-distance",
+            job_name="contrail-bench-2025q1-google-adsb-contrailwatch-region",
             project="contrails-301217",
             region="us-east1",
             temp_location=BEAM_TEMP,
@@ -125,27 +127,6 @@ def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
     return pd.read_parquet(gcs_path)
 
 
-def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
-    """Open preprocessed PCR observations.
-
-    Parameters
-    ----------
-    time : datetime.datetime
-        Target time
-
-    flight_level : int
-        Target flight level
-
-    Return
-    ------
-    pd.DataFrame
-        Preprocessed PCR observations
-
-    """
-    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
-    return pd.read_parquet(gcs_path)
-
-
 def apply_probability_threshold(ppcr: xr.DataArray, threshold: float) -> xr.DataArray:
     """Apply probability threshold to forecast PCR probability.
 
@@ -186,20 +167,18 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     """
     forecast = open_forecast(time, flight_level)
     adsb = open_adsb(time, flight_level)
-    observed = open_observations(time, flight_level)
     
-    ppcr = forecast["ppcr"].compute()
-    observed = observed[observed["pcr_count"] > 0]
-    target_lon = xr.DataArray(observed["longitude"], dims="observation")
-    target_lat = xr.DataArray(observed["latitude"], dims="observation")
+    # restrict to contrailwatch region
+    lon_min, lon_max, lat_min, lat_max = EXTENT
+    adsb = adsb[
+        adsb["longitude"].between(lon_min, lon_max) & 
+        adsb["latitude"].between(lat_min, lat_max)
+    ]
 
-    dist = xr.DataArray(
-        adsb.set_index(["longitude", "latitude"])["flight_distance"].reindex(
-            observed.set_index(["longitude", "latitude"]).index,
-            fill_value=0.0
-        ).values,
-        dims="observation"
-    )
+    ppcr = forecast["ppcr"].compute()
+    target_lon = xr.DataArray(adsb["longitude"], dims="segment")
+    target_lat = xr.DataArray(adsb["latitude"], dims="segment")
+    dist = xr.DataArray(adsb["flight_distance"], dims="segment")
     dist_tot = dist.sum().item()
 
     records = []
@@ -213,8 +192,8 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
             "time": time,
             "flight_level": flight_level,
             "probability_threshold": threshold,
-            "flight_distance_in_observed_and_forecast_pcr": dist_pred,
-            "flight_distance_in_observed_pcr": dist_tot,
+            "adsb_dist_in_forecast_pcr": dist_pred,
+            "adsb_dist": dist_tot
         })
 
     df = pd.DataFrame.from_records(records)
@@ -252,7 +231,6 @@ def main() -> None:
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
 
-    # compute metrics
     with beam.Pipeline(options=options) as pipeline:
         (
             pipeline
@@ -261,7 +239,6 @@ def main() -> None:
             | "Group by time" >> beam.GroupByKey()
             | "Save to GCS" >> beam.MapTuple(write_metrics)
         )
-
 
 
 if __name__ == "__main__":

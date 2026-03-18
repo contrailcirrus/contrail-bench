@@ -270,8 +270,6 @@ def main() -> None:
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
 
-    calculate_metrics(*next(pcoll))
-
     # compute metrics
     with beam.Pipeline(options=options) as pipeline:
         (

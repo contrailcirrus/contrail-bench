@@ -99,7 +99,7 @@ def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
         Binary PCR forecast
 
     """
-    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.forecast.nc"
+    gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.nc"
     with temp.temp_file() as tmp:
         gcsfs.GCSFileSystem().get(gcs_path, tmp)
         return xr.open_dataset(tmp, engine="netcdf4")
@@ -122,7 +122,7 @@ def open_observations(time: datetime.datetime, flight_level: int) -> pd.DataFram
         Preprocessed PCR observations
 
     """
-    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.gruan.pq"
+    gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
     return pd.read_parquet(gcs_path)
 
 
@@ -240,8 +240,6 @@ def main() -> None:
     
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
-
-    calculate_metrics(TIMES[0], FLIGHT_LEVELS[0])
 
     # compute metrics
     with beam.Pipeline(options=options) as pipeline:

@@ -22,7 +22,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
-logger.setLevel("INFO")
+logger.setLevel("DEBUG")
 
 
 # Pipeline parameters
@@ -255,8 +255,8 @@ async def get_attributions(params: Iterable[str], limiter: aiolimiter.AsyncLimit
     Returns
     -------
     pd.DataFrame
-        Attributed flight segments. Includes the flight's ICAO address and callsign
-        and the segment start and end time.
+        Attributed flight segments. Includes the flight's ICAO address and
+        flight number and the segment start and end time.
     
     """
     while (result := await _submit_burst(params, limiter)) is None:
@@ -272,7 +272,7 @@ async def get_attributions(params: Iterable[str], limiter: aiolimiter.AsyncLimit
     segment_list = []
     for flight in result:
         icao_address = flight["flightDetails"]["icao24"]
-        callsign = flight["flightDetails"]["callSign"]
+        flight_number = flight["flightDetails"]["carrier"] + str(flight["flightDetails"]["flightNumber"])
         
         for segment in flight["segments"]:
             segment_start = pd.to_datetime(segment["startTime"]).tz_localize(None)
@@ -282,7 +282,7 @@ async def get_attributions(params: Iterable[str], limiter: aiolimiter.AsyncLimit
             
             segment_list.append({
                 "icao_address": icao_address,
-                "callsign": callsign,
+                "flight_number": flight_number,
                 "start": segment_start,
                 "end": segment_end
             })

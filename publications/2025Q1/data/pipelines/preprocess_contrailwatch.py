@@ -24,11 +24,14 @@ logger.setLevel("INFO")
 
 # Pipeline parameters
 
-#: GCS path to cleaned ADSB data
+#: GCS path to cleaned ADSB waypoint data
 GCS_TEMPLATE = "gs://contrails-301217-gaia-trajectories/2024-Spire-Aireon/enhanced/accept/waypoints/{}-waypoints.pq"
 
+#: GCS path to cleaned ADSB metadata
+GCS_META_TEMPLATE = "gs://contrails-301217-gaia-trajectories/2024-Spire-Aireon/enhanced/accept/summary/{}-summary.pq"
+
 #: Output times
-TIMES = pd.date_range("2024-05-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Output flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -100,7 +103,7 @@ def get_attributions(time: datetime.datetime) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Attributed flight segments. Includes the flight's ICAO address and callsign
+        Attributed flight segments. Includes the flight's ICAO address and flight number
         and the segment start and end time.
     
     """
@@ -141,13 +144,11 @@ def get_adsb(time: datetime.datetime) -> pd.DataFrame:
     columns = [
         "flight_id",
         "icao_address",
-        "callsign",
         "longitude",
         "latitude",
         "altitude_baro",
         "timestamp"
     ]
-        
 
     df = pd.read_parquet(GCS_TEMPLATE.format(start.floor("1d").strftime("%Y-%m-%d")), columns=columns)
     if end.floor("1d") != start.floor("1d"):
@@ -163,6 +164,16 @@ def get_adsb(time: datetime.datetime) -> pd.DataFrame:
     mask[1:] |= mask[:-1]
     mask[:-1] |= mask[1:]
     df = df[mask].copy()
+
+    # join flight number from summary files
+    prev = target - pd.Timedelta(days=1)
+    columns = ["flight_id", "flight_number"]
+    meta = pd.concat([
+        pd.read_parquet(GCS_META_TEMPLATE.format(prev.floor("1d").strftime("%Y-%m-%d")), columns=columns),
+        pd.read_parquet(GCS_META_TEMPLATE.format(target.floor("1d").strftime("%Y-%m-%d")), columns=columns)
+    ], axis="index")
+    id_to_flight_number_map = meta[["flight_id", "flight_number"]].set_index("flight_id")["flight_number"]
+    df["flight_number"] = df["flight_id"].map(id_to_flight_number_map)
 
     return df
 
@@ -187,16 +198,16 @@ def join(attributions: pd.DataFrame, adsb: pd.DataFrame) -> tuple[pd.DataFrame, 
         - trajectories not matched any attributed segments are dropped
 
     """
-    # matches are based on (icao_address, callsign) as a proxy for flight identity.
-    # only keep (icao_address, callsign) pairs that map to a single flight id
-    fid_map = adsb.set_index(["icao_address", "callsign"])["flight_id"]
+    # matches are based on (icao_address, flight_number) as a proxy for flight identity.
+    # only keep (icao_address, flight_number) pairs that map to a single flight id
+    fid_map = adsb.set_index(["icao_address", "flight_number"])["flight_id"]
     fid_map = fid_map.drop_duplicates(ignore_index=False)
     count = fid_map.groupby(fid_map.index).size()
     unique = count[count == 1].index
     fid_map = fid_map.loc[unique]
 
     # assign flight ids to attributions
-    attributions = attributions.set_index(["icao_address", "callsign"])
+    attributions = attributions.set_index(["icao_address", "flight_number"])
     attributions = attributions[attributions.index.isin(fid_map.index)]
     attributions["flight_id"] = attributions.index.map(fid_map)
     attributions = attributions.reset_index()
