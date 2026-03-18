@@ -23,7 +23,7 @@ TIMES = pd.date_range("2024-09-01 00:00", "2024-12-31 23:00", freq="1h").to_pyda
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
 #: Probability threshold
-PROBABILITY_THRESHOLDS = list(np.logspace(-1, -3, 11))
+PROBABILITY_THRESHOLDS = list(np.logspace(-1, -2.4, 11))
 
 #: GCP buckets for temporary Beam files
 BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
