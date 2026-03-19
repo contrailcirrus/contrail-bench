@@ -5,7 +5,6 @@ import datetime
 import itertools
 
 import apache_beam as beam
-import gcsfs
 import pandas as pd
 from apache_beam.options.pipeline_options import PipelineOptions
 
@@ -13,7 +12,7 @@ from apache_beam.options.pipeline_options import PipelineOptions
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 01:00", freq="1h").to_pydatetime().tolist()
 
 #: Forecast flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -25,6 +24,10 @@ BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-
 #: GCP buckets for temporary assets
 GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/iagos"
 GCP_ADSB_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/adsb"
+
+#: GCP bucket for permanent assets
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/iagos-statistics"
+
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -51,7 +54,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
     if runner == "dataflow":
         return PipelineOptions(
             runner="dataflow",
-            job_name="contrail-bench-2025q1-count-iagos",
+            job_name="contrail-bench-2025q1-iagos-statistics",
             project="contrails-301217",
             region="us-east1",
             temp_location=BEAM_TEMP,
@@ -90,7 +93,7 @@ def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
     return pd.read_parquet(gcs_path)
 
 
-def count_observations(time: datetime.datetime, flight_level: int) -> list[tuple[str, int | float]]:
+def count_observations(time: datetime.datetime, flight_level: int) -> tuple[str, dict]:
     """Count observations.
 
     Parameters
@@ -118,14 +121,51 @@ def count_observations(time: datetime.datetime, flight_level: int) -> list[tuple
     pcr_flight_m = adsb.reindex(df[df["pcr_distance"] > 0].set_index(["longitude", "latitude"]).index).sum().item()
     total_flight_m = adsb.reindex(df.set_index(["longitude", "latitude"]).index).sum().item()
 
-    return [("pcr", pcr_count), ("total", total_count), ("pcr_flight_m", pcr_flight_m), ("total_flight_m", total_flight_m)]
+    record = {
+        "pcr_grid_cells": pcr_count,
+        "total_grid_cells": total_count,
+        "pcr_flight_m": pcr_flight_m,
+        "total_flight_m": total_flight_m,
+    }
+    key = time.strftime("%Y%m%d")
+    return (key, record)
 
 
-def write_to_gcs(key: str, count: int) -> None:
-    """Write counts to GCS."""
-    fs = gcsfs.GCSFileSystem()
-    with fs.open(f"{GCP_OBS_TMPDIR}/{key}_count.txt", "w") as f:
-        f.write(f"{count}")
+def aggregate_statistics(key: str, records: list[dict]) -> tuple[str, dict]:
+    """Aggregate statistics per day."""
+    record = {
+        k: sum(record[k] for record in records)
+        for k in ["pcr_grid_cells", "total_grid_cells", "pcr_flight_m", "total_flight_m"]
+    }
+    return key, record
+
+
+def combine_globally(statistics: list[tuple[str, dict] | pd.DataFrame]) -> pd.DataFrame:
+    """Combine statistics into a single dataframe.
+
+    Note that statistics may be combined in multiple stages,
+    so this function must handle tuples provided by the previous
+    step as well as partial DataFrames containing multiple tuples.
+
+    """
+    df_list = []
+    for item in statistics:
+        if isinstance(item, pd.DataFrame):
+            df_list.append(item)
+            continue
+        
+        idx_str, data = item
+        idx = pd.to_datetime(idx_str, format="%Y%m%d")
+        df_list.append(pd.DataFrame(data, index=[idx]))
+
+    return pd.concat(df_list, axis="index")
+
+
+def write_to_gcs(df: pd.DataFrame) -> None:
+    """Write results to GCS."""
+    df = df.sort_index()
+    sink = f"{GCP_ASSETS}/daily.pq"
+    df.to_parquet(sink)
 
 
 def main() -> None:
@@ -143,9 +183,11 @@ def main() -> None:
         (
             pipeline
             | "Create PCollection" >> beam.Create(pcoll)
-            | "Count observations" >> beam.FlatMapTuple(count_observations)
-            | "Calculate sum" >> beam.CombinePerKey(sum)
-            | "Write to GCS" >> beam.MapTuple(write_to_gcs)
+            | "Count observations" >> beam.MapTuple(count_observations)
+            | "Group by day" >> beam.GroupByKey()
+            | "Aggregate statistics" >> beam.MapTuple(aggregate_statistics)
+            | "Combine globally" >> beam.CombineGlobally(combine_globally)
+            | "Write to GCS" >> beam.Map(write_to_gcs)
         )
 
 
