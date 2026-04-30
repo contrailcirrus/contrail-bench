@@ -1,6 +1,8 @@
 # ide
 .ipynb_checkpoints/
 .DS_Store
+*.sublime-workspace
+*.sublime-project
 
 # python
 __pycache__/
