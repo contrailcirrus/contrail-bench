@@ -1,0 +1,192 @@
+# https://setuptools.readthedocs.io/en/latest/
+[build-system]
+requires = ["cython>=3", "numpy>=2.0.0", "setuptools>=77", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "contrailbench"
+authors = [{ name = "Contrails.org", email = "py@contrails.org" }]
+description = "Contrail forecast benchmark framework"
+keywords = ["contrails", "climate", "aviation", "geospatial"]
+# https://pypi.org/classifiers/
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Typing :: Typed",
+]
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+readme = { file = "README.md", content-type = "text/markdown" }
+
+dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/contrailcirrus/contrail-bench"
+Changelog = "https://bench.contrails.org/changelog.html"
+Documentation = "https://bench.contrails.org"
+Issues = "https://github.com/contrailcirrus/contrail-bench/issues"
+Repository = "https://github.com/contrailcirrus/contrail-bench"
+
+[project.optional-dependencies]
+
+# All non-development dependencies
+# Only dependencies that work on all python versions
+complete = ["contrailbench[dev,docs,jupyter]"]
+
+# Development dependencies
+dev = [
+    "ty>=0.0.23",
+    "platformdirs>=3.0",
+    "pre-commit>=4.5",
+    "pytest>=8.2",
+    "pytest-cov>=2.11",
+    "ruff>=0.15.0",
+    "types-requests>=2.25",
+]
+
+# Documentation / Sphinx dependencies
+docs = [
+    "doc8>=2.0",
+    "furo>=2025.12",
+    "myst-parser>=5.0",
+    "nb-clean>=4.0",
+    "nbsphinx>=0.9",
+    "nbval>=0.11",
+    "numpydoc>=1.7",
+    "pytest-check-links>=0.8.0",
+    "sphinx>=9.0",
+    "sphinx-autoapi>=3.0",
+    "sphinx-autobuild>=2025.8",
+    "sphinxcontrib-bibtex>=2.6",
+    "sphinx_copybutton>=0.5",
+    "sphinxext.opengraph>=0.13",
+]
+
+# Jupyter notebook and lab interface
+jupyter = ["jupyterlab>=4.5"]
+
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+[tool.setuptools]
+include-package-data = false
+
+# Note that setuptools-scm changes some of the default behavior of setuptools
+# In particular, everything tracked by git is included in the source distribution (sdist)
+# We exclude the docs and tests directories from wheel distributions
+# https://setuptools.pypa.io/en/latest/userguide/package_discovery.html#finding-simple-packages
+# https://github.com/pypa/setuptools_scm#file-finders-hook-makes-most-of-manifestin-unnecessary
+[tool.setuptools.packages.find]
+exclude = ["docs*", "tests*"]
+
+# https://mypy.readthedocs.io/en/stable/installed_packages.html#creating-pep-561-compatible-packages
+[tool.setuptools.package-data]
+"contrail-bench" = ["py.typed"]
+
+# https://github.com/pypa/setuptools_scm/
+[tool.setuptools_scm]
+write_to = "contrail-bench/_version.py"
+local_scheme = "no-local-version"
+
+# mypy static type checking
+# https://mypy.readthedocs.io/en/stable/config_file.html
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = false
+show_error_codes = true
+
+# pytest
+# https://docs.pytest.org/en/7.1.x/reference/customize.html
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+doctest_optionflags = ["ELLIPSIS", "NORMALIZE_WHITESPACE", "NUMBER"]
+
+# RST linter
+# https://github.com/pycqa/doc8
+[tool.doc8]
+max-line-length = 100
+ignore-path = [
+    "docs/changelog.rst",
+    "docs/contributing.rst",
+    "docs/api/*",
+    "docs/_build/*",
+]
+
+# Python linter
+# https://docs.astral.sh/ruff/
+# https://docs.astral.sh/ruff/settings/#select
+# https://www.pydocstyle.org/en/6.3.0/error_codes.html
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "ANN",
+    "B",
+    "D",
+    "E",
+    "F",
+    "I",
+    "NPY",
+    "PL",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "UP",
+]
+ignore = [
+    "ANN401",
+    "B028",
+    "E402",
+    "D105",
+    "D202",
+    "D401",
+    "PLC0415",
+    "PLR2004",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "PLW2901",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"docs/conf.py" = ["E501"]
+"docs/**/*.ipynb" = ["ANN", "D103", "E501"]
+"tests/**" = ["ANN", "D"]
+
+# https://docs.astral.sh/ruff/settings/#lintisort
+[tool.ruff.lint.isort]
+known-first-party = ["contrailbench", "pycontrails"]
+
+# https://docs.astral.sh/ruff/settings/#pydocstyle
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+# https://docs.astral.sh/ruff/settings/#flake8-pytest-style
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = true
+
+# Relevant for RUF009
+# https://docs.astral.sh/ruff/settings/#lint_flake8-bugbear_extend-immutable-calls
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["numpy.timedelta64", "numpy.float32", "os.path.join"]
+
+[tool.pydoclint]
+style = "numpy"
+skip-checking-raises = true
+check-class-attributes = false

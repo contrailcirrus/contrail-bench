@@ -1,0 +1,43 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff format
+        language_version: python3
+        language: python
+        additional_dependencies: ["ruff>=0.15"]
+        entry: ruff format
+        types: [file]
+        files: \.(py|ipynb)$
+      - id: ruff-lint
+        name: ruff check
+        language_version: python3
+        language: python
+        additional_dependencies: ["ruff>=0.15"]
+        entry: ruff check
+        args: [--fix, --exit-non-zero-on-fix]
+        types: [file]
+        files: \.(py|ipynb)$
+      - id: doc8
+        name: doc8
+        language_version: python3
+        language: python
+        additional_dependencies: ["doc8>=2.0"]
+        entry: doc8
+        types: [file]
+        files: \.(rst)$
+      - id: nb-clean
+        name: nb-clean
+        language_version: python3
+        language: python
+        additional_dependencies: ["nb-clean>=4.0"]
+        entry: nb-clean
+        types: [file]
+        files: \.(ipynb)$
+        args:
+          - clean
+          - --remove-empty-cells
+          - --preserve-cell-metadata
+          - tags
+          - --preserve-cell-outputs
+          - --preserve-execution-counts
