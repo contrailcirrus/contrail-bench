@@ -1,6 +1,0 @@
-
-Changelog
-=========
-
-
-To do
