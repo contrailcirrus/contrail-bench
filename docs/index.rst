@@ -18,7 +18,12 @@ Reports
 TODO: brief overview. Rationale behind choice of metrics with link to blog post,
 information about release cycle.
 
-`2026 Q1 <reports/2026-Q1.rst>`_
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+   :caption: Reports
+
+   reports/2026-Q1
 
 =======================
 Participating forecasts
