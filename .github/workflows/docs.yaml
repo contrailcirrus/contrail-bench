@@ -44,6 +44,9 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
 
+      - name: Install
+        run: pip install ".[docs]"
+
       - name: Build docs
         run: |
           make docs
