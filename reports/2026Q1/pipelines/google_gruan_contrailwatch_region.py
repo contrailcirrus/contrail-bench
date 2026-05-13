@@ -163,10 +163,14 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     -------
     tuple[str, str]
         Key-value pair containing string-formatted time (YYYYMMDDHH) as key
-        and path to GCS output as values.
+        and path to GCS output as values. If forecast is missing, return
+        "missing" as key.
 
     """
-    forecast = open_forecast(time, flight_level)
+    try:
+        forecast = open_forecast(time, flight_level)
+    except FileNotFoundError:
+        return "missing", ""
     observed = open_observations(time, flight_level)
     
     # restrict to contrailwatch region
@@ -218,6 +222,9 @@ def write_metrics(key: str, paths: list[str]) -> None:
         List of GCS paths with per-flight-level files
 
     """
+    if key == "missing":
+        return
+
     df = pd.concat((pd.read_parquet(p) for p in sorted(paths)), ignore_index=True)
     sink = f"{GCP_ASSETS}/{key}.pq"
     df.to_parquet(sink)

@@ -170,7 +170,8 @@ async def preprocess_google() -> None:
     # limit to a single burst per minute
     limiter = aiolimiter.AsyncLimiter(1)
     for times in itertools.batched(TIMES, GOOGLE_FORECAST_API_BURST_LIMIT):
-        if times[0].date() not in [
+        # Skip three dates missing from Google's backfill
+        if times[0].date() in [
             datetime.date(2024, 4, 11),
             datetime.date(2024, 4, 12),
             datetime.date(2024, 6, 6)

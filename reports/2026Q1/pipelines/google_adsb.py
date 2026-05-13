@@ -14,7 +14,6 @@ from scipy.ndimage import binary_dilation
 
 from pycontrails.utils import temp
 
-
 # Pipeline parameters
 
 #: Forecast times
@@ -95,7 +94,7 @@ def open_forecast(time: datetime.datetime, flight_level: int) -> xr.Dataset:
     Return
     ------
     xr.Dataset
-        Binary PCR forecast
+        Probabilistic PCR forecast
 
     """
     gcs_path = f"{GCP_FORECAST_TMPDIR}/{int(time.timestamp())}_{flight_level}.nc"
@@ -160,10 +159,14 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     -------
     tuple[str, str]
         Key-value pair containing string-formatted time (YYYYMMDDHH) as key
-        and path to GCS output as values.
+        and path to GCS output as values. If forecast is missing, return
+        "missing" as key with an arbitrary string as a value.
 
     """
-    forecast = open_forecast(time, flight_level)
+    try:
+        forecast = open_forecast(time, flight_level)
+    except FileNotFoundError:
+        return "missing", ""
     adsb = open_adsb(time, flight_level)
 
     ppcr = forecast["ppcr"].compute()
@@ -207,6 +210,9 @@ def write_metrics(key: str, paths: list[str]) -> None:
         List of GCS paths with per-flight-level files
 
     """
+    if key == "missing":
+        return
+
     df = pd.concat((pd.read_parquet(p) for p in sorted(paths)), ignore_index=True)
     sink = f"{GCP_ASSETS}/{key}.pq"
     df.to_parquet(sink)
