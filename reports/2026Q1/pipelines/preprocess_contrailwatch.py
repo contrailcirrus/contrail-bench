@@ -44,10 +44,10 @@ BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-tmp
 BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-staging"
 
 #: GCP bucket for upstream assets
-GCP_CONTRAILWATCH_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/contrailwatch-raw"
+GCP_CONTRAILWATCH_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/contrailwatch-raw"
 
 #: GCP bucket for generated assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/contrailwatch"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/contrailwatch"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:

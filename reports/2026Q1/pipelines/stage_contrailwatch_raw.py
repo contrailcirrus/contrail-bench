@@ -43,7 +43,7 @@ CONTRAILWATCH_RETRY_ON = (500, 503,)
 CONTRAILWATCH_RETRY_BACKOFF = 60
 
 #: GCP bucket for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/contrailwatch-raw"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/contrailwatch-raw"
 
 
 def get_secret(name: str) -> str:

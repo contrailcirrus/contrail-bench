@@ -46,7 +46,7 @@ GOOGLE_FORECAST_API_RETRY_ON = (503,)
 GOOGLE_FORECAST_API_RETRY_BACKOFF = 60
 
 #: GCP bucket for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/google"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/google"
 
 
 def get_secret(name: str) -> str:
