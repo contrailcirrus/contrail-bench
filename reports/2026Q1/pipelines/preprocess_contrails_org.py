@@ -31,11 +31,11 @@ V0_FORECAST_ZARR = "gs://contrails-301217-contrail-grid/v3/cocip-grid-hres.zarr"
 V1_FORECAST_START = datetime.datetime(2024, 6, 1, 0)
 
 #: GCP buckets for temporary Beam files
-BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
-BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
+BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-tmp"
+BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-staging"
 
 #: GCP bucket for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrails-org"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/contrails-org"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:

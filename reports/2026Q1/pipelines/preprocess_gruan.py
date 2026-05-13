@@ -51,7 +51,7 @@ VERTICAL_RESOLUTION = 250.0
 ENGINE_EFFICIENCY = 0.3
 
 #: GCP bucket for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/gruan"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/gruan"
 
 
 def process_waypoints(ds: xr.Dataset) -> pd.DataFrame:

@@ -19,11 +19,11 @@ TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pyda
 FLIGHT_LEVELS = list(range(270, 450, 10))
 
 #: GCP buckets for temporary Beam files
-BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
-BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
+BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-tmp"
+BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-staging"
 
 #: GCP buckets for temporary assets
-GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/gruan"
+GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/gruan"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:

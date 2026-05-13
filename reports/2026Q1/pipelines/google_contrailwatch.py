@@ -27,16 +27,16 @@ FLIGHT_LEVELS = list(range(270, 450, 10))
 PROBABILITY_THRESHOLDS = list(np.logspace(-1, -2.4, 11))
 
 #: GCP buckets for temporary Beam files
-BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-tmp"
-BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2025Q1/beam-staging"
+BEAM_TEMP = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-tmp"
+BEAM_STAGING = "gs://contrails-301217-tmp-10-day-ttl/contrail-bench/2026Q1/beam-staging"
 
 #: GCP buckets for temporary assets
-GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google-contrailwatch"
-GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/google"
-GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2025Q1/contrailwatch"
+GCP_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/google-contrailwatch"
+GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/google"
+GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/tmp/2026Q1/contrailwatch"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2025Q1/google-contrailwatch"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/google-contrailwatch"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
