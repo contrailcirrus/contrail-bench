@@ -93,7 +93,7 @@ def open_adsb(time: datetime.datetime, flight_level: int) -> pd.DataFrame:
     return pd.read_parquet(gcs_path)
 
 
-def count_observations(time: datetime.datetime, flight_level: int) -> tuple[str, dict]:
+def count_observations(time: datetime.datetime, flight_level: int, extent: list[float] | None = None) -> tuple[str, dict]:
     """Count observations.
 
     Parameters
@@ -112,6 +112,13 @@ def count_observations(time: datetime.datetime, flight_level: int) -> tuple[str,
     """
     gcs_path = f"{GCP_OBS_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
     df = pd.read_parquet(gcs_path)
+
+    if extent is not None:
+        lon_min, lon_max, lat_min, lat_max = extent
+        df = df[
+            df["longitude"].between(lon_min, lon_max) & 
+            df["latitude"].between(lat_min, lat_max)
+        ]
 
     pcr_count = (df["pcr_distance"] > 0).sum()
     total_count = len(df)
@@ -140,7 +147,7 @@ def aggregate_statistics(key: str, records: list[dict]) -> tuple[str, dict]:
     return key, record
 
 
-def combine_globally(statistics: list[tuple[str, dict] | pd.DataFrame]) -> pd.DataFrame:
+def combine_tuple_or_df(statistics: list[tuple[str, dict] | pd.DataFrame]) -> pd.DataFrame:
     """Combine statistics into a single dataframe.
 
     Note that statistics may be combined in multiple stages,
@@ -161,10 +168,10 @@ def combine_globally(statistics: list[tuple[str, dict] | pd.DataFrame]) -> pd.Da
     return pd.concat(df_list, axis="index")
 
 
-def write_to_gcs(df: pd.DataFrame) -> None:
+def write_to_gcs(df: pd.DataFrame, name: str) -> None:
     """Write results to GCS."""
     df = df.sort_index()
-    sink = f"{GCP_ASSETS}/daily.pq"
+    sink = f"{GCP_ASSETS}/{name}.pq"
     df.to_parquet(sink)
 
 
@@ -180,16 +187,28 @@ def main() -> None:
 
     # compute metrics
     with beam.Pipeline(options=options) as pipeline:
+
+        p1 = pipeline | "Create PCollection" >> beam.Create(pcoll)
+
+        # Global
         (
-            pipeline
-            | "Create PCollection" >> beam.Create(pcoll)
-            | "Count observations" >> beam.MapTuple(count_observations)
-            | "Group by day" >> beam.GroupByKey()
-            | "Aggregate statistics" >> beam.MapTuple(aggregate_statistics)
-            | "Combine globally" >> beam.CombineGlobally(combine_globally)
-            | "Write to GCS" >> beam.Map(write_to_gcs)
+            p1
+            | "Count observations (global)" >> beam.MapTuple(count_observations)
+            | "Group by day (global)" >> beam.GroupByKey()
+            | "Aggregate statistics (global)" >> beam.MapTuple(aggregate_statistics)
+            | "Combine (global)" >> beam.CombineGlobally(combine_tuple_or_df)
+            | "Write to GCS (global)" >> beam.Map(write_to_gcs, name="daily")
         )
 
+        # ContrailWatch Region
+        (
+            p1
+            | "Count observations (contrailwatch)" >> beam.MapTuple(count_observations, extent=[-134, -63, 20, 50])
+            | "Group by day (contrailwatch)" >> beam.GroupByKey()
+            | "Aggregate statistics (contrailwatch)" >> beam.MapTuple(aggregate_statistics)
+            | "Combine (contrailwatch)" >> beam.CombineGlobally(combine_tuple_or_df)
+            | "Write to GCS (contrailwatch)" >> beam.Map(write_to_gcs, name="daily-contrailwatch")
+        )
 
 
 if __name__ == "__main__":

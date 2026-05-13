@@ -31,7 +31,7 @@ logger.setLevel("INFO")
 # Pipeline parameters
 
 #: Forecast times
-TIMES = pd.date_range("2024-09-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
+TIMES = pd.date_range("2024-01-01 00:00", "2024-12-31 23:00", freq="1h").to_pydatetime().tolist()
 
 #: Required flight levels
 FLIGHT_LEVELS = list(range(270, 450, 10))
@@ -170,6 +170,12 @@ async def preprocess_google() -> None:
     # limit to a single burst per minute
     limiter = aiolimiter.AsyncLimiter(1)
     for times in itertools.batched(TIMES, GOOGLE_FORECAST_API_BURST_LIMIT):
+        if times[0].date() not in [
+            datetime.date(2024, 4, 11),
+            datetime.date(2024, 4, 12),
+            datetime.date(2024, 6, 6)
+        ]:
+            continue
         logger.info(f"Submitting burst starting with {times[0]}")
         while await submit_burst(times, limiter):
             pass
