@@ -82,9 +82,9 @@ Evaluation datasets
    ================ ================================ =========
    **Observation**  **Type**                         **Added**
    ================ ================================ =========
+   `ContrailWatch`_ Geostationary Satellite          2026 Q1
    `GRUAN`_         In-situ (radiosonde)             2026 Q1
    `IAGOS`_         In-situ (aircraft)               2026 Q1
-   `ContrailWatch`_ Geostationary Satellite          2026 Q1
    ================ ================================ =========
 
 For examples showing how to access and use evaluation datasets, see `Evaluation Datasets <datasets.rst>`_.
@@ -95,11 +95,10 @@ to determine whether it's suitable for ContrailBench.
 
 
 .. toctree::
-   :glob:
    :hidden:
    :caption: Reports
 
-   reports/*
+   reports/2026-Q1/2026-Q1.rst
 
 .. toctree::
    :hidden:
@@ -110,7 +109,7 @@ to determine whether it's suitable for ContrailBench.
 
 .. _Github issue: https://github.com/contrailcirrus/contrail-bench/issues
 
-.. _2026 Q1: <reports/2026-Q1.rst>`_
+.. _2026 Q1: reports/2026-Q1/2026-Q1.rst
 
 .. _Contrails.org: https://apidocs.contrails.org/notebooks/forecast_api.html
 .. _Google: https://developers.google.com/contrails/v1/forecast-description#ml-based_model

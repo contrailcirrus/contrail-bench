@@ -1,0 +1,66 @@
+2026 Q1
+=======
+
+========
+Overview
+========
+
+The 2026 Q1 report includes the following benchmarks:
+
+   **Persistent Contrail Regions: Hit Rate vs Flight Distance** (`methods <#>`_)
+
+   Forecasts: `Contrails.org`_, `Google`_ (`examples <../../forecasts.rst>`__)
+
+   Evaluation Datasets: `ContrailWatch`_, `GRUAN`_, `IAGOS`_ (`examples <../../datasets.rst>`__)
+
+   Time Periods: 2024 (full year and seasons)
+
+   Regions: Global (GRUAN and IAGOS only), CONUS (all observations)
+
+   Notes: ContrailWatch observations were available for CONUS only at the time this report
+   was generated and are omitted from global benchmarks. CONUS benchmarks include the region
+   from 134W-63W and 20N-50N.
+
+
+========================================================
+Persistent Contrail Regions: Hit Rate vs Flight Distance
+========================================================
+
+Global, January-December 2024
+-----------------------------
+
+TODO: add figures for Contrails.org and Google forecasts
+
+Global, January/February/December 2024 (NH winter)
+--------------------------------------------------
+
+TODO: add figures for Contrails.org and Google forecasts
+
+Global, March-May 2024 (NH spring)
+----------------------------------
+
+TODO: add figures for Contrails.org and Google forecasts
+
+Global, June-August 2024 (NH summer)
+------------------------------------
+
+TODO: add figures for Contrails.org and Google forecasts
+
+Global, September-November 2024 (NH autumn)
+-------------------------------------------
+
+TODO: add figures for Contrails.org and Google forecasts
+
+CONUS, January-December 2024
+----------------------------
+
+TODO: add figures for Contrails.org and Google forecasts
+
+
+
+.. _Contrails.org: https://apidocs.contrails.org/notebooks/forecast_api.html
+.. _Google: https://developers.google.com/contrails/v1/forecast-description#ml-based_model
+
+.. _GRUAN: https://www.gruan.org/
+.. _IAGOS: https://www.iagos.org/
+.. _ContrailWatch: https://developers.google.com/contrails/v1/ContrailWatch-description
