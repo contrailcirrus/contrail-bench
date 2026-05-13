@@ -26,35 +26,61 @@ The 2026 Q1 report includes the following benchmarks:
 Persistent Contrail Regions: Hit Rate vs Flight Distance
 ========================================================
 
+TODO: add figures and links for Google forecasts
+
 Global, January-December 2024
 -----------------------------
 
-TODO: add figures for Contrails.org and Google forecasts
+.. figure:: img/global-contrails-org.png
+
+   Download
+   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-contrails-org.pq>`__,
+   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-contrails-org-ci.pq>`__
 
 Global, January/February/December 2024 (NH winter)
 --------------------------------------------------
 
-TODO: add figures for Contrails.org and Google forecasts
+.. figure:: img/global-winter-contrails-org.png
+
+   Download
+   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-winter-contrails-org.pq>`__,
+   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-winter-contrails-org-ci.pq>`__
 
 Global, March-May 2024 (NH spring)
 ----------------------------------
 
-TODO: add figures for Contrails.org and Google forecasts
+.. figure:: img/global-spring-contrails-org.png
+
+   Download
+   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-spring-contrails-org.pq>`__,
+   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-spring-contrails-org-ci.pq>`__
 
 Global, June-August 2024 (NH summer)
 ------------------------------------
 
-TODO: add figures for Contrails.org and Google forecasts
+.. figure:: img/global-summer-contrails-org.png
+
+   Download
+   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-summer-contrails-org.pq>`__,
+   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-summer-contrails-org-ci.pq>`__
 
 Global, September-November 2024 (NH autumn)
 -------------------------------------------
 
-TODO: add figures for Contrails.org and Google forecasts
+.. figure:: img/global-autumn-contrails-org.png
+
+   Download
+   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-autumn-contrails-org.pq>`__,
+   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-autumn-contrails-org-ci.pq>`__
 
 CONUS, January-December 2024
 ----------------------------
 
-TODO: add figures for Contrails.org and Google forecasts
+.. figure:: img/conus-contrails-org.png
+
+   Download
+   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/conus-contrails-org.pq>`__,
+   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/conus-contrails-org-ci.pq>`__
 
 
 
