@@ -20,7 +20,7 @@ In addition, we provide access to the `ContrailBench evaluation code <https://gi
 and to observation-based `evaluation datasets`_ through a public cloud bucket.
 
 ContrailBench is an evolving framework, and the community is welcome to file a `GitHub issue`_
-or write to bench@contrails.org to share ideas and suggestions with the ContrailBench team.
+or write to info@contrails.org to share ideas and suggestions with the ContrailBench team.
 
 =======
 Reports
@@ -70,7 +70,7 @@ Participating forecasts
 For examples showing how to access participating forecasts, see `Participating Forecasts <forecasts.rst>`_.
 
 Have a forecast you'd like to see included in ContrailBench? Please submit a `GitHub issue`_
-or write to bench@contrails.org and we'll work with you to include it in future reports.
+or write to info@contrails.org and we'll work with you to include it in future reports.
 
 ===================
 Evaluation datasets
@@ -90,7 +90,7 @@ Evaluation datasets
 For examples showing how to access and use evaluation datasets, see `Evaluation Datasets <datasets.rst>`_.
 
 Have an observational dataset you'd like to see used in ContrailBench?
-Please submit a `GitHub issue`_ or write to bench@contrails.org and we'll work with you
+Please submit a `GitHub issue`_ or write to info@contrails.org and we'll work with you
 to determine whether it's suitable for ContrailBench.
 
 
