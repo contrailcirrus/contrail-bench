@@ -6,5 +6,5 @@ Participating Forecasts
    :maxdepth: 1
    :caption: Notebooks
 
-.. notebooks/contrails-org
-.. notebooks/google
+   notebooks/contrails-org.ipynb
+   notebooks/google.ipynb

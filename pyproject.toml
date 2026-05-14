@@ -26,7 +26,11 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 readme = { file = "README.md", content-type = "text/markdown" }
 
-dependencies = []
+dependencies = [
+   "aiohttp>=3.13",
+   "netCDF4>=1.7",
+   "xarray>=2026.4"
+]
 dynamic = ["version"]
 
 [project.urls]
@@ -72,7 +76,11 @@ docs = [
 ]
 
 # Jupyter notebook and lab interface
-jupyter = ["jupyterlab>=4.5"]
+jupyter = [
+   "cartopy>=0.25",
+   "matplotlib>=3.10",
+   "jupyterlab>=4.5"
+]
 
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 [tool.setuptools]

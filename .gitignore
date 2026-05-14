@@ -20,6 +20,7 @@ _version.py
 rgi_cython.c
 rgi_cython*.so
 rgi_cython*.pyd
+.virtual_documents
 
 # docs
 .doc-test-cache
