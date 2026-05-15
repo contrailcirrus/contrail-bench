@@ -87,6 +87,8 @@ Evaluation datasets
    `IAGOS`_         In-situ (aircraft)               2026 Q1
    ================ ================================ =========
 
+In addition, we provide a public ADS-B dataset used to compute metrics related to cost.
+
 For examples showing how to access and use evaluation datasets, see `Evaluation Datasets <datasets.rst>`_.
 
 Have an observational dataset you'd like to see used in ContrailBench?

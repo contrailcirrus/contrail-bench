@@ -29,6 +29,9 @@ readme = { file = "README.md", content-type = "text/markdown" }
 dependencies = [
    "aiohttp>=3.13",
    "netCDF4>=1.7",
+   "numpy>=2.4",
+   "pandas>=3.0",
+   "pyarrow>=24.0",
    "xarray>=2026.4"
 ]
 dynamic = ["version"]

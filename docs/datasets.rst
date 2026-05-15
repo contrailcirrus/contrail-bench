@@ -6,7 +6,7 @@ Evaluation Datasets
    :maxdepth: 1
    :caption: Notebooks
 
-.. notebooks/adsb
-.. notebooks/gruan
-.. notebooks/iagos
-.. notebooks/contrailwatch
+   ADS-B <notebooks/adsb>
+   GRUAN <notebooks/gruan>
+   IAGOS <notebooks/iagos>
+   ContrailWatch <notebooks/contrailwatch>
