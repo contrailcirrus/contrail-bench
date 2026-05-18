@@ -2,7 +2,7 @@
 
 This directory holds code for generating results presented in the [2026Q1 ContrailBench report](https://bench.contrails.org/reports/2026-Q1/2026-Q1.html).
 
-Code for data preprocessing is organized in a series of [Apache Beam](https://beam.apache.org/) pipelines run using [Google Cloud Dataflow](https://cloud.google.com/products/dataflow). Beam Pipelines are not designed to be runnable without modification (for example, they read from and write to private cloud buckets) but are provided for transparency. Key outputs from pipelines are provided alongside the ContrailBench release as [public evaluation datasets](https://bench.contrails.org/datasets.html). See [Data Preprocessing](#data-preprocessing) for details.
+Code for data preprocessing is organized in a series of [Apache Beam](https://beam.apache.org/) pipelines run using [Google Cloud Dataflow](https://cloud.google.com/products/dataflow). The pipelines are not designed to be runnable without modification (for example, they read from and write to private cloud buckets) but are provided for transparency. Key outputs from pipelines are provided alongside the ContrailBench release as [public evaluation datasets](https://bench.contrails.org/datasets.html). See [Data Preprocessing](#data-preprocessing) for details.
 
 Code for producing results from preprocessed data is provided in [analysis.ipynb](). This notebook is backed entirely by public data. See [Instructions for Reproducing Results](#instructions-for-reproducing-results) for details on running the notebook.
 
