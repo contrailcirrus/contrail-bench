@@ -15,7 +15,6 @@ from scipy.ndimage import binary_dilation
 from pycontrails.physics import constants
 from pycontrails.utils import temp
 
-
 # Pipeline parameters
 
 #: Forecast times
@@ -37,7 +36,7 @@ GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/contrails-org
 GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/gruan"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/contrails-org-gruan"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/processed/contrails-org-gruan"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -56,10 +55,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
 
     """
     if runner == "direct":
-        return PipelineOptions(
-            runner="direct",
-            direct_num_workers=1
-        )
+        return PipelineOptions(runner="direct", direct_num_workers=1)
 
     if runner == "dataflow":
         return PipelineOptions(
@@ -75,7 +71,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
             service_account_email="contrail-bench-staging-sa@contrails-301217.iam.gserviceaccount.com",
             machine_type="e2-highmem-4",
             autoscaling_algorithm="NONE",
-            num_workers=100
+            num_workers=100,
         )
 
     msg = f"Invalid pipeline option identifier {runner}"
@@ -145,11 +141,13 @@ def apply_horizontal_buffer(pcr: xr.DataArray, size: int) -> xr.DataArray:
     """
     if size < 1:
         return pcr
-    
-    structure = np.array([[False, True, False], [True, True, True], [False, True, False]]).reshape((3, 3, 1, 1))
 
-    pad_left = pcr.values[-size:,...]
-    pad_right = pcr.values[:size,...]
+    structure = np.array([[False, True, False], [True, True, True], [False, True, False]]).reshape(
+        (3, 3, 1, 1)
+    )
+
+    pad_left = pcr.values[-size:, ...]
+    pad_right = pcr.values[:size, ...]
     padded = np.concat((pad_left, pcr.values, pad_right), axis=0)
     buffered = binary_dilation(padded, structure=structure, iterations=size)
     buffered = buffered[size:-size]
@@ -186,25 +184,28 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     observed = observed[observed["pcr_count"] > 0]
     target_lon = xr.DataArray(observed["longitude"], dims="observation")
     target_lat = xr.DataArray(observed["latitude"], dims="observation")
-    area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observation")
+    area = (constants.radius_earth * np.deg2rad(0.25)) ** 2 * xr.DataArray(
+        np.cos(np.deg2rad(observed["latitude"])), dims="observation"
+    )
     area_tot = area.sum().item()
 
     records = []
     for buffer_size in BUFFERS:
-
         buffered = apply_horizontal_buffer(pcr, buffer_size)
         predicted = buffered.sel(longitude=target_lon, latitude=target_lat)
         area_pred = area.where(predicted).sum().item()
 
-        records.append({
-            "time": time,
-            "flight_level": flight_level,
-            "horizontal_buffer": buffer_size,
-            "vertical_buffer_up": 0,
-            "vertical_buffer_down": 0,
-            "observed_pcr_area_in_forecast_pcr": area_pred,
-            "observed_pcr_area": area_tot,
-        })
+        records.append(
+            {
+                "time": time,
+                "flight_level": flight_level,
+                "horizontal_buffer": buffer_size,
+                "vertical_buffer_up": 0,
+                "vertical_buffer_down": 0,
+                "observed_pcr_area_in_forecast_pcr": area_pred,
+                "observed_pcr_area": area_tot,
+            }
+        )
 
     df = pd.DataFrame.from_records(records)
     sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
@@ -237,7 +238,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runner", type=str, required=True)
     args = parser.parse_args()
-    
+
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
 
@@ -252,7 +253,5 @@ def main() -> None:
         )
 
 
-
 if __name__ == "__main__":
     main()
-

@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from apache_beam.options.pipeline_options import PipelineOptions
-from scipy.ndimage import binary_dilation
 
 from pycontrails.utils import temp
 
@@ -35,7 +34,7 @@ GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/google"
 GCP_ADSB_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/adsb"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/google-adsb"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/processed/google-adsb"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -54,10 +53,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
 
     """
     if runner == "direct":
-        return PipelineOptions(
-            runner="direct",
-            direct_num_workers=1
-        )
+        return PipelineOptions(runner="direct", direct_num_workers=1)
 
     if runner == "dataflow":
         return PipelineOptions(
@@ -73,7 +69,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
             service_account_email="contrail-bench-staging-sa@contrails-301217.iam.gserviceaccount.com",
             machine_type="e2-highmem-4",
             autoscaling_algorithm="NONE",
-            num_workers=100
+            num_workers=100,
         )
 
     msg = f"Invalid pipeline option identifier {runner}"
@@ -177,18 +173,19 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
 
     records = []
     for threshold in PROBABILITY_THRESHOLDS:
-
         pcr = apply_probability_threshold(ppcr, threshold)
         predicted = pcr.sel(longitude=target_lon, latitude=target_lat)
         dist_pred = dist.where(predicted).sum().item()
 
-        records.append({
-            "time": time,
-            "flight_level": flight_level,
-            "probability_threshold": threshold,
-            "adsb_dist_in_forecast_pcr": dist_pred,
-            "adsb_dist": dist_tot
-        })
+        records.append(
+            {
+                "time": time,
+                "flight_level": flight_level,
+                "probability_threshold": threshold,
+                "adsb_dist_in_forecast_pcr": dist_pred,
+                "adsb_dist": dist_tot,
+            }
+        )
 
     df = pd.DataFrame.from_records(records)
     sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
@@ -224,7 +221,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runner", type=str, required=True)
     args = parser.parse_args()
-    
+
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
 
@@ -240,4 +237,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

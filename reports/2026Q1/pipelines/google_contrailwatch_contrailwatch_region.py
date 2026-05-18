@@ -14,7 +14,6 @@ from apache_beam.options.pipeline_options import PipelineOptions
 from pycontrails.physics import constants
 from pycontrails.utils import temp
 
-
 # Pipeline parameters
 
 #: Forecast times
@@ -39,7 +38,7 @@ GCP_FORECAST_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/google"
 GCP_OBS_TMPDIR = "gs://contrails-301217-contrail-bench/2026Q1/contrailwatch"
 
 #: GCP bucket for permanent assets
-GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/google-contrailwatch-contrailwatch-region"
+GCP_ASSETS = "gs://contrails-301217-contrail-bench/2026Q1/processed/google-contrailwatch-contrailwatch-region"
 
 
 def get_pipeline_options(runner: str) -> PipelineOptions:
@@ -58,10 +57,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
 
     """
     if runner == "direct":
-        return PipelineOptions(
-            runner="direct",
-            direct_num_workers=1
-        )
+        return PipelineOptions(runner="direct", direct_num_workers=1)
 
     if runner == "dataflow":
         return PipelineOptions(
@@ -77,7 +73,7 @@ def get_pipeline_options(runner: str) -> PipelineOptions:
             service_account_email="contrail-bench-staging-sa@contrails-301217.iam.gserviceaccount.com",
             machine_type="e2-highmem-4",
             autoscaling_algorithm="NONE",
-            num_workers=100
+            num_workers=100,
         )
 
     msg = f"Invalid pipeline option identifier {runner}"
@@ -176,30 +172,33 @@ def calculate_metrics(time: datetime.datetime, flight_level: int) -> tuple[str, 
     # restrict to contrailwatch region
     lon_min, lon_max, lat_min, lat_max = EXTENT
     observed = observed[
-        observed["longitude"].between(lon_min, lon_max) & 
-        observed["latitude"].between(lat_min, lat_max)
+        observed["longitude"].between(lon_min, lon_max)
+        & observed["latitude"].between(lat_min, lat_max)
     ]
 
     ppcr = forecast["ppcr"].compute()
     target_lon = xr.DataArray(observed["longitude"], dims="observation")
     target_lat = xr.DataArray(observed["latitude"], dims="observation")
-    area = (constants.radius_earth * np.deg2rad(0.25))**2 * xr.DataArray(np.cos(np.deg2rad(observed["latitude"])), dims="observation")
+    area = (constants.radius_earth * np.deg2rad(0.25)) ** 2 * xr.DataArray(
+        np.cos(np.deg2rad(observed["latitude"])), dims="observation"
+    )
     area_tot = area.sum().item()
 
     records = []
     for threshold in PROBABILITY_THRESHOLDS:
-
         pcr = apply_probability_threshold(ppcr, threshold)
         predicted = pcr.sel(longitude=target_lon, latitude=target_lat)
         area_pred = area.where(predicted).sum().item()
 
-        records.append({
-            "time": time,
-            "flight_level": flight_level,
-            "probability_threshold": threshold,
-            "observed_pcr_area_in_forecast_pcr": area_pred,
-            "observed_pcr_area": area_tot,
-        })
+        records.append(
+            {
+                "time": time,
+                "flight_level": flight_level,
+                "probability_threshold": threshold,
+                "observed_pcr_area_in_forecast_pcr": area_pred,
+                "observed_pcr_area": area_tot,
+            }
+        )
 
     df = pd.DataFrame.from_records(records)
     sink = f"{GCP_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
@@ -235,7 +234,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runner", type=str, required=True)
     args = parser.parse_args()
-    
+
     options = get_pipeline_options(args.runner)
     pcoll = itertools.product(TIMES, FLIGHT_LEVELS)
 
@@ -250,7 +249,5 @@ def main() -> None:
         )
 
 
-
 if __name__ == "__main__":
     main()
-

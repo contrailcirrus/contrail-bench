@@ -9,6 +9,7 @@ repos:
         entry: ruff format
         types: [file]
         files: \.(py|ipynb)$
+        exclude: ^reports/
       - id: ruff-lint
         name: ruff check
         language_version: python3
@@ -18,6 +19,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
         types: [file]
         files: \.(py|ipynb)$
+        exclude: ^reports/
       - id: doc8
         name: doc8
         language_version: python3
