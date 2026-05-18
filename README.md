@@ -16,11 +16,17 @@ ContrailBench reports are built from sources in the [docs](docs) subdirectory.
 
 ## Running example notebooks
 
-To set up an environment for running example notebooks provided alongside ContrailBench reports, install [uv](https://docs.astral.sh/uv/) and run
+To set up a virtual environment for running example notebooks provided alongside ContrailBench reports, install [uv](https://docs.astral.sh/uv/) and run
 ```bash
 make venv
-source .venv/bin/activate # macOS/Linus
+source .venv/bin/activate # macOS/Linux
 # .venv\Scripts\Activate.ps1 # Window PowerShell
 # .venv\Scripts\activate.bat # Windows CMD
 make install
 ```
+
+With the virtual environment active, run
+```bash
+jupyter lab
+```
+and navigate to [docs/notebooks](docs/notebooks) to open and run notebooks.
