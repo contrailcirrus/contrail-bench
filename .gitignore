@@ -1,4 +1,29 @@
 # ide
 .ipynb_checkpoints/
 .DS_Store
+*.sublime-workspace
+*.sublime-project
 
+# python
+__pycache__
+*.pyc
+*.zip
+*.rdb
+*.egg
+*.egg-info
+dist
+build
+sdist
+.eggs
+venv
+_version.py
+rgi_cython.c
+rgi_cython*.so
+rgi_cython*.pyd
+.virtual_documents
+
+# docs
+.doc-test-cache
+docs/_build
+docs/api/
+docs/examples/airports

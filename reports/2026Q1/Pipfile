@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+apache-beam = {extras = ["gcp"], version = "==2.67.0"}
+google-cloud-secret-manager = "*"
+pycontrails = {extras = ["complete"], version = "*"}
+google-cloud-bigquery = "*"
+aiolimiter = "*"
+
+[dev-packages]
+python-lsp-server = "*"
+python-lsp-black = "*"
+pylsp-mypy = "*"
+python-lsp-ruff = "*"
+
+[requires]
+python_version = "3.12"
