@@ -19,7 +19,8 @@ The 2026 Q1 report includes the following benchmarks:
 
 .. raw:: html
 
-   <iframe src="https://dash.contrails.org/bench-2026q1"
+   <iframe id="benchframe"
+           src="https://dash.contrails.org/bench-2026q1"
            style="width: 100%; height: 900px; border: none; display: block;"
            title="ContrailBench V1 – Persistent Contrail Regions: Hit Rate vs Flight Distance">
    </iframe>
