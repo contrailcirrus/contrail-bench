@@ -31,7 +31,10 @@ The 2026 Q1 report includes the following benchmarks:
      if (!frame) { console.warn(TAG, 'iframe not found'); return; }
      var mq = window.matchMedia('(prefers-color-scheme: dark)');
      function currentTheme() {
-       var t = document.documentElement.getAttribute('data-theme');
+       // Furo writes data-theme on <body> (not <html>); also persists in localStorage.
+       var t = document.body.getAttribute('data-theme')
+            || document.documentElement.getAttribute('data-theme')
+            || (function () { try { return localStorage.getItem('theme'); } catch (e) { return null; } })();
        if (t === 'dark' || t === 'light') return t;
        return mq.matches ? 'dark' : 'light';
      }
@@ -39,24 +42,25 @@ The 2026 Q1 report includes the following benchmarks:
        var theme = currentTheme();
        if (frame.contentWindow) {
          frame.contentWindow.postMessage({ type: 'theme', value: theme }, '*');
-         console.debug(TAG, 'sent', theme, '(', reason, ')');
+         console.log(TAG, 'sent', theme, '(', reason, ')');
        }
      }
-     // Try to send immediately (in case iframe already loaded), on load, and a
-     // few retries to cover races where the iframe's listener isn't yet ready.
+     // Try immediately, on iframe load, and a few retries to cover races.
      sendTheme('init');
      frame.addEventListener('load', function () { sendTheme('load'); });
      [200, 600, 1500, 3000].forEach(function (ms) {
        setTimeout(function () { sendTheme('retry-' + ms); }, ms);
      });
-     new MutationObserver(function () { sendTheme('mutation'); }).observe(
-       document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] }
-     );
+     // Observe both <html> and <body> so we react regardless of where the
+     // theme attribute lives (Furo uses <body>).
+     var observer = new MutationObserver(function () { sendTheme('mutation'); });
+     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+     observer.observe(document.body,            { attributes: true, attributeFilter: ['data-theme', 'class'] });
      mq.addEventListener('change', function () { sendTheme('mq-change'); });
      window.addEventListener('message', function (e) {
        if (e.data && e.data.type === 'theme-request') sendTheme('theme-request');
      });
-     console.debug(TAG, 'parent script installed; current theme =', currentTheme());
+     console.log(TAG, 'parent script installed; current theme =', currentTheme());
    })();
    </script>
 
