@@ -3,7 +3,8 @@ Download all 2026-Q1 benchmark parquet files from public GCS and compile into
 a single CSV for use in a Dash app.
 
 Columns in output CSV:
-  horizontal_buffer         – forecast buffer radius (index in source parquets)
+  horizontal_buffer         – forecast buffer radius (Contrails.org only; n/a for Google)
+  probability_threshold     – probability threshold (Google only; n/a for Contrails.org)
   penalty                   – flight distance in forecast PCR (ratio)
   iagos_hit_rate            – IAGOS hit rate
   gruan_hit_rate            – GRUAN hit rate
@@ -58,8 +59,14 @@ def main() -> None:
         df = read_pq(stem)
         df_ci = read_pq(f"{stem}-ci")
         merged = df.join(df_ci)
-        merged.index.name = "horizontal_buffer"
-        merged = merged.reset_index()
+        if forecast == "contrails-org":
+            merged.index.name = "horizontal_buffer"
+            merged = merged.reset_index()
+            merged["probability_threshold"] = pd.NA
+        else:
+            merged.index.name = "probability_threshold"
+            merged = merged.reset_index()
+            merged["horizontal_buffer"] = pd.NA
         merged["region"] = region
         merged["season"] = season
         merged["forecast"] = forecast
@@ -68,7 +75,7 @@ def main() -> None:
     combined = pd.concat(all_dfs, ignore_index=True)
 
     # Reorder: metadata columns first
-    meta_cols = ["region", "season", "forecast", "horizontal_buffer"]
+    meta_cols = ["region", "season", "forecast", "horizontal_buffer", "probability_threshold"]
     data_cols = [c for c in combined.columns if c not in meta_cols]
     combined = combined[meta_cols + data_cols]
 

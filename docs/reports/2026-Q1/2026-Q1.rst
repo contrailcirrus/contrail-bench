@@ -1,10 +1,6 @@
 2026 Q1
 =======
 
-========
-Overview
-========
-
 The 2026 Q1 report includes the following benchmarks:
 
    **Persistent Contrail Regions: Hit Rate vs Flight Distance** (`methods <#>`_)
@@ -21,134 +17,33 @@ The 2026 Q1 report includes the following benchmarks:
    was generated and are omitted from global benchmarks. CONUS benchmarks include the region
    from 134W-63W and 20N-50N.
 
+.. raw:: html
 
-========================================================
-Persistent Contrail Regions: Hit Rate vs Flight Distance
-========================================================
-
-Global, January-December 2024
------------------------------
-
-|
-
-.. figure:: img/global-contrails-org.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-contrails-org.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-contrails-org-ci.pq>`__
-
-|
-
-.. figure:: img/global-google.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-google.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-google-ci.pq>`__
-
-|
-
-Global, January/February/December 2024 (NH winter)
---------------------------------------------------
-
-|
-
-.. figure:: img/global-winter-contrails-org.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-winter-contrails-org.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-winter-contrails-org-ci.pq>`__
-
-|
-
-.. figure:: img/global-winter-google.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-winter-google.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-winter-google-ci.pq>`__
-
-|
-
-Global, March-May 2024 (NH spring)
-----------------------------------
-
-|
-
-.. figure:: img/global-spring-contrails-org.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-spring-contrails-org.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-spring-contrails-org-ci.pq>`__
-
-|
-
-.. figure:: img/global-spring-google.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-spring-google.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-spring-google-ci.pq>`__
-
-|
-
-Global, June-August 2024 (NH summer)
-------------------------------------
-
-|
-
-.. figure:: img/global-summer-contrails-org.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-summer-contrails-org.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-summer-contrails-org-ci.pq>`__
-
-|
-
-.. figure:: img/global-summer-google.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-summer-google.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-summer-google-ci.pq>`__
-
-|
-
-Global, September-November 2024 (NH autumn)
--------------------------------------------
-
-|
-
-.. figure:: img/global-autumn-contrails-org.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-autumn-contrails-org.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-autumn-contrails-org-ci.pq>`__
-
-|
-
-.. figure:: img/global-autumn-google.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-autumn-google.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/global-autumn-google-ci.pq>`__
-
-|
-
-CONUS, January-December 2024
-----------------------------
-
-|
-
-.. figure:: img/conus-contrails-org.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/conus-contrails-org.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/conus-contrails-org-ci.pq>`__
-
-|
-
-.. figure:: img/conus-google.png
-
-   Download
-   `data <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/conus-google.pq>`__,
-   `confidence intervals <https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks/conus-google-ci.pq>`__
+   <iframe src="https://dash.contrails.org/bench-2026q1"
+           style="width: 100%; height: 900px; border: none; display: block;"
+           title="ContrailBench V1 – Persistent Contrail Regions: Hit Rate vs Flight Distance">
+   </iframe>
+   <script>
+   (function () {
+     var frame = document.getElementById('benchframe');
+     function currentTheme() {
+       return document.documentElement.getAttribute('data-theme') ||
+              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+     }
+     function sendTheme() {
+       if (frame.contentWindow) {
+         frame.contentWindow.postMessage({ type: 'theme', value: currentTheme() }, '*');
+       }
+     }
+     frame.addEventListener('load', sendTheme);
+     new MutationObserver(sendTheme).observe(document.documentElement, {
+       attributes: true, attributeFilter: ['data-theme']
+     });
+     window.addEventListener('message', function (e) {
+       if (e.data && e.data.type === 'theme-request') sendTheme();
+     });
+   })();
+   </script>
 
 
 .. _Contrails.org: https://apidocs.contrails.org/notebooks/forecast_api.html
