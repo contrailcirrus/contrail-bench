@@ -26,26 +26,37 @@ The 2026 Q1 report includes the following benchmarks:
    </iframe>
    <script>
    (function () {
+     var TAG = '[benchframe-theme]';
      var frame = document.getElementById('benchframe');
+     if (!frame) { console.warn(TAG, 'iframe not found'); return; }
      var mq = window.matchMedia('(prefers-color-scheme: dark)');
      function currentTheme() {
        var t = document.documentElement.getAttribute('data-theme');
        if (t === 'dark' || t === 'light') return t;
-       return mq.matches ? 'dark' : 'light'; // resolve 'auto' or missing attr
+       return mq.matches ? 'dark' : 'light';
      }
-     function sendTheme() {
-       if (frame && frame.contentWindow) {
-         frame.contentWindow.postMessage({ type: 'theme', value: currentTheme() }, '*');
+     function sendTheme(reason) {
+       var theme = currentTheme();
+       if (frame.contentWindow) {
+         frame.contentWindow.postMessage({ type: 'theme', value: theme }, '*');
+         console.debug(TAG, 'sent', theme, '(', reason, ')');
        }
      }
-     frame.addEventListener('load', sendTheme);
-     new MutationObserver(sendTheme).observe(document.documentElement, {
-       attributes: true, attributeFilter: ['data-theme']
+     // Try to send immediately (in case iframe already loaded), on load, and a
+     // few retries to cover races where the iframe's listener isn't yet ready.
+     sendTheme('init');
+     frame.addEventListener('load', function () { sendTheme('load'); });
+     [200, 600, 1500, 3000].forEach(function (ms) {
+       setTimeout(function () { sendTheme('retry-' + ms); }, ms);
      });
-     mq.addEventListener('change', sendTheme); // react to OS changes when Furo is in auto
+     new MutationObserver(function () { sendTheme('mutation'); }).observe(
+       document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] }
+     );
+     mq.addEventListener('change', function () { sendTheme('mq-change'); });
      window.addEventListener('message', function (e) {
-       if (e.data && e.data.type === 'theme-request') sendTheme();
+       if (e.data && e.data.type === 'theme-request') sendTheme('theme-request');
      });
+     console.debug(TAG, 'parent script installed; current theme =', currentTheme());
    })();
    </script>
 
