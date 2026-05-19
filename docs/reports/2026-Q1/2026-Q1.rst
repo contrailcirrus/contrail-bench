@@ -27,12 +27,14 @@ The 2026 Q1 report includes the following benchmarks:
    <script>
    (function () {
      var frame = document.getElementById('benchframe');
+     var mq = window.matchMedia('(prefers-color-scheme: dark)');
      function currentTheme() {
-       return document.documentElement.getAttribute('data-theme') ||
-              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+       var t = document.documentElement.getAttribute('data-theme');
+       if (t === 'dark' || t === 'light') return t;
+       return mq.matches ? 'dark' : 'light'; // resolve 'auto' or missing attr
      }
      function sendTheme() {
-       if (frame.contentWindow) {
+       if (frame && frame.contentWindow) {
          frame.contentWindow.postMessage({ type: 'theme', value: currentTheme() }, '*');
        }
      }
@@ -40,6 +42,7 @@ The 2026 Q1 report includes the following benchmarks:
      new MutationObserver(sendTheme).observe(document.documentElement, {
        attributes: true, attributeFilter: ['data-theme']
      });
+     mq.addEventListener('change', sendTheme); // react to OS changes when Furo is in auto
      window.addEventListener('message', function (e) {
        if (e.data && e.data.type === 'theme-request') sendTheme();
      });
