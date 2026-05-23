@@ -109,6 +109,13 @@ to determine whether it's suitable for ContrailBench.
    Participating Forecasts <forecasts>
    Evaluation Datasets <datasets>
 
+.. toctree::
+   :hidden:
+   :caption: Links
+
+   Github <https://github.com/contrailcirrus/contrail-bench>
+   Contrails.org <https://contrails.org>
+
 .. _Github issue: https://github.com/contrailcirrus/contrail-bench/issues
 
 .. _2026 Q1: reports/2026-Q1/2026-Q1.rst
