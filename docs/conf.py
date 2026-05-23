@@ -12,12 +12,12 @@ import datetime
 
 # -- Project information -----------------------------------------------------
 
-project = "Contrail Bench"
+project = "ContrailBench"
 copyright = f"2025-{datetime.datetime.now().year}, Contrails.org"
 
 author = "Contrails.org"
-version = "2026-Q1"  # TODO: determine versioning scheme
-release = "2026-Q1"  # TODO: determine versioning scheme
+version = "v1"
+release = "v1"
 
 # -- General configuration ---------------------------------------------------
 
