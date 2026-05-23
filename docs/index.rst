@@ -8,10 +8,11 @@ ContrailBench
 Overview
 ========
 
-Re-routing flights to avoid forming persistent contrails and
-`significantly reduce aviation's climate impact <https://notebook.contrails.org/contrails-org-why-its-time-to-change-course-for-the-climate/>`_
-requires access to forecasts that support effective avoidance at a reasonable
-`cost <https://notebook.contrails.org/the-cost-of-contrail-management/>`_.
+Re-routing flights to avoid persistent contrails can
+`significantly reduce aviation's climate impact <https://notebook.contrails.org/contrails-org-why-its-time-to-change-course-for-the-climate/>`_.
+This is only possible with forecasts that support effective avoidance at a
+`reasonable cost <https://notebook.contrails.org/the-cost-of-contrail-management/>`_.
+
 ContrailBench is an open framework for evaluating forecasts for contrail avoidance using a
 `wide range of contrail observations <https://notebook.contrails.org/observing-contrails-a-trifle-complicated/>`_.
 
