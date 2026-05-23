@@ -1,6 +1,6 @@
 # ContrailBench
 
-ContrailBench is an analysis framework for evaluating contrail forecast models.
+**ContrailBench** is an analysis framework for evaluating contrail forecast models.
 
 This repository contains public code releases to accompany ContrailBench reports. To view the latest ContrailBench reports, see [bench.contrails.org](bench.contrails.org). For background information on ContrailBench, see posts at [notebook.contrails.org](notebook.contrails.org).
 
