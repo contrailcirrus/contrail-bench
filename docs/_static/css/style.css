@@ -2,6 +2,12 @@ article table.align-default {
     margin-left: 0;
 }
 
+/* Logo */
+.sidebar-logo {
+  margin: 0;
+  max-width: 35px;
+}
+
 /* Notebook dataframe formatting */
 .jp-RenderedHTMLCommon table,
 div.rendered_html table {
