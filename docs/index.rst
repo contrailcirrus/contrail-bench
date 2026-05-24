@@ -10,18 +10,18 @@ Overview
 
 Re-routing flights to avoid persistent contrails can
 `significantly reduce aviation's climate impact <https://notebook.contrails.org/contrails-org-why-its-time-to-change-course-for-the-climate/>`_.
-This is only possible with forecasts that support effective avoidance at a
+This is only possible with contrail forecasts that support effective avoidance at a
 `reasonable cost <https://notebook.contrails.org/the-cost-of-contrail-management/>`_.
 
-ContrailBench is an open framework for evaluating forecasts for contrail avoidance using a
-`wide range of contrail observations <https://notebook.contrails.org/observing-contrails-a-trifle-complicated/>`_.
+**ContrailBench** is an open framework for evaluating contrail forecasts against
+`real-world observations <https://notebook.contrails.org/observing-contrails-a-trifle-complicated/>`_
+using a standard set of metrics designed to capture their effectiveness and cost.
+This site hosts reports evaluating `participating forecasts`_ alongside links
+to the `ContrailBench evaluation code <https://github.com/contrailcirrus/contrail-bench>`_ on Github and observation-based `evaluation datasets`_ on a public cloud bucket.
 
-This site contains reports evaluating `participating forecasts`_ using a standard set of metrics designed to capture their effectiveness and cost.
-In addition, we provide access to the `ContrailBench evaluation code <https://github.com/contrailcirrus/contrail-bench>`_ through GitHub
-and to observation-based `evaluation datasets`_ through a public cloud bucket.
+ContrailBench is an evolving framework. File a `GitHub issue`_
+or write to info@contrails.org to share ideas and suggestions with the team.
 
-ContrailBench is an evolving framework, and the community is welcome to file a `GitHub issue`_
-or write to info@contrails.org to share ideas and suggestions with the ContrailBench team.
 
 =======
 Reports
