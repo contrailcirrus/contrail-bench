@@ -17,7 +17,7 @@ This is only possible with contrail forecasts that support effective avoidance a
 `real-world observations <https://notebook.contrails.org/observing-contrails-a-trifle-complicated/>`_
 using a standard set of metrics designed to capture their effectiveness and cost.
 This site hosts reports evaluating `participating forecasts`_ alongside links
-to the `ContrailBench evaluation code <https://github.com/contrailcirrus/contrail-bench>`_ on Github and observation-based `evaluation datasets`_ on a public cloud bucket.
+to the `ContrailBench evaluation code <https://github.com/contrailcirrus/contrail-bench>`_ (on Github) and observation-based `evaluation datasets`_ (on a public cloud bucket).
 
 ContrailBench is an evolving framework. File a `GitHub issue`_
 or write to info@contrails.org to share ideas and suggestions with the team.
