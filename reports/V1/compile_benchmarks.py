@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pandas as pd
 
-BASE = "https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks"
+BASE = "https://storage.googleapis.com/contrailbench-public-data/V1/benchmarks"
 
 BENCHMARKS = [
     # (file_stem,                     region,   season,   forecast)
