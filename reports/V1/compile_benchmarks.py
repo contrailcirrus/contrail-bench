@@ -1,5 +1,5 @@
 """
-Download all 2026-Q1 benchmark parquet files from public GCS and compile into
+Download all V1 benchmark parquet files from public GCS and compile into
 a single CSV for use in a Dash app.
 
 Columns in output CSV:
@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pandas as pd
 
-BASE = "https://storage.googleapis.com/contrailbench-public-data/2026Q1/benchmarks"
+BASE = "https://storage.googleapis.com/contrailbench-public-data/V1/benchmarks"
 
 BENCHMARKS = [
     # (file_stem,                     region,   season,   forecast)
