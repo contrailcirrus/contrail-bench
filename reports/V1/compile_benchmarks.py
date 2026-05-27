@@ -1,5 +1,5 @@
 """
-Download all 2026-Q1 benchmark parquet files from public GCS and compile into
+Download all V1 benchmark parquet files from public GCS and compile into
 a single CSV for use in a Dash app.
 
 Columns in output CSV:
