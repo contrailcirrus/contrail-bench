@@ -1,7 +1,9 @@
-2026 Q1
-=======
+ContrailBench V1
+================
 
-The 2026 Q1 report includes the following benchmarks:
+*Released TBD 2026*
+
+The V1 report includes the following benchmarks:
 
    **Persistent Contrail Regions: Hit Rate vs Flight Distance** (`methods <#>`_)
 
@@ -20,7 +22,7 @@ The 2026 Q1 report includes the following benchmarks:
 .. raw:: html
 
    <iframe id="benchframe"
-           src="https://dash.contrails.org/bench-2026q1"
+           src="https://dash.contrails.org/bench-v1"
            style="width: 100%; height: 900px; border: none; display: block;"
            title="ContrailBench V1 – Persistent Contrail Regions: Hit Rate vs Flight Distance">
    </iframe>

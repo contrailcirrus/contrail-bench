@@ -50,7 +50,7 @@ All available reports are listed below.
    ========== =====================
    **Report** **Coverage**
    ========== =====================
-   `2026 Q1`_ January-December 2024
+   `V1`_      January-December 2024
    ========== =====================
 
 =======================
@@ -63,8 +63,8 @@ Participating forecasts
    ================ ================================ =========
    **Forecast**     **Type**                         **Added**
    ================ ================================ =========
-   `Contrails.org`_ Deterministic, physics-based     2026 Q1
-   `Google`_        Probabilistic, ML-physics hybrid 2026 Q1
+   `Contrails.org`_ Deterministic, physics-based     V1
+   `Google`_        Probabilistic, ML-physics hybrid V1
    ================ ================================ =========
 
 For examples showing how to access participating forecasts,
@@ -83,9 +83,9 @@ Evaluation datasets
    ================ ================================ =========
    **Observation**  **Type**                         **Added**
    ================ ================================ =========
-   `ContrailWatch`_ Geostationary Satellite          2026 Q1
-   `GRUAN`_         In-situ (radiosonde)             2026 Q1
-   `IAGOS`_         In-situ (aircraft)               2026 Q1
+   `ContrailWatch`_ Geostationary Satellite          V1
+   `GRUAN`_         In-situ (radiosonde)             V1
+   `IAGOS`_         In-situ (aircraft)               V1
    ================ ================================ =========
 
 We also provide a public ADS-B dataset used to compute cost metrics.
@@ -101,7 +101,7 @@ or write to info@contrails.org and we'll assess its suitability.
    :hidden:
    :caption: Reports
 
-   reports/2026-Q1/2026-Q1.rst
+   reports/V1/V1.rst
 
 .. toctree::
    :hidden:
@@ -119,7 +119,7 @@ or write to info@contrails.org and we'll assess its suitability.
 
 .. _Github issue: https://github.com/contrailcirrus/contrail-bench/issues
 
-.. _2026 Q1: reports/2026-Q1/2026-Q1.rst
+.. _V1: reports/V1/V1.rst
 
 .. _Contrails.org: https://apidocs.contrails.org/notebooks/forecast_api.html
 .. _Google: https://developers.google.com/contrails/v1/forecast-description#ml-based_model
