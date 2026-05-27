@@ -50,7 +50,7 @@ All available reports are listed below.
    ========== =====================
    **Report** **Coverage**
    ========== =====================
-   `V1`_      January-December 2024
+   `v1`_      January-December 2024
    ========== =====================
 
 =======================
@@ -101,7 +101,7 @@ or write to info@contrails.org and we'll assess its suitability.
    :hidden:
    :caption: Reports
 
-   reports/V1/V1.rst
+   reports/v1/v1.rst
 
 .. toctree::
    :hidden:
