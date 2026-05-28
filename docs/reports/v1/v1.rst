@@ -23,49 +23,13 @@ The v1 report includes the following benchmarks:
 
    <iframe id="benchframe"
            src="https://dash.contrails.org/bench-v1"
-           style="width: 100%; height: 900px; border: none; display: block;"
+           width="100%" height="0" frameborder="0" scrolling="no"
            title="ContrailBench v1 – Persistent Contrail Regions: Hit Rate vs Flight Distance">
    </iframe>
-   <script>
-   (function () {
-     var TAG = '[benchframe-theme]';
-     var frame = document.getElementById('benchframe');
-     if (!frame) { console.warn(TAG, 'iframe not found'); return; }
-     var mq = window.matchMedia('(prefers-color-scheme: dark)');
-     function currentTheme() {
-       // Furo writes data-theme on <body> (not <html>); also persists in localStorage.
-       var t = document.body.getAttribute('data-theme')
-            || document.documentElement.getAttribute('data-theme')
-            || (function () { try { return localStorage.getItem('theme'); } catch (e) { return null; } })();
-       if (t === 'dark' || t === 'light') return t;
-       return mq.matches ? 'dark' : 'light';
-     }
-     function sendTheme(reason) {
-       var theme = currentTheme();
-       if (frame.contentWindow) {
-         frame.contentWindow.postMessage({ type: 'theme', value: theme }, '*');
-         console.log(TAG, 'sent', theme, '(', reason, ')');
-       }
-     }
-     // Try immediately, on iframe load, and a few retries to cover races.
-     sendTheme('init');
-     frame.addEventListener('load', function () { sendTheme('load'); });
-     [200, 600, 1500, 3000].forEach(function (ms) {
-       setTimeout(function () { sendTheme('retry-' + ms); }, ms);
-     });
-     // Observe both <html> and <body> so we react regardless of where the
-     // theme attribute lives (Furo uses <body>).
-     var observer = new MutationObserver(function () { sendTheme('mutation'); });
-     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
-     observer.observe(document.body,            { attributes: true, attributeFilter: ['data-theme', 'class'] });
-     mq.addEventListener('change', function () { sendTheme('mq-change'); });
-     window.addEventListener('message', function (e) {
-       if (e.data && e.data.type === 'theme-request') sendTheme('theme-request');
-     });
-     console.log(TAG, 'parent script installed; current theme =', currentTheme());
-   })();
-   </script>
-
+  <script type="text/javascript">addEventListener("message", (event) => benchframe.height = event.data.height);</script>
+  <noscript>
+    <blockquote>See <a href="http://dash.contrails.org/bench-v1/">ContrailBench v1 Dashboard</a> for interactive dashboard.</blockquote>
+  </noscript>
 
 .. _Contrails.org: https://apidocs.contrails.org/notebooks/forecast_api.html
 .. _Google: https://developers.google.com/contrails/v1/forecast-description#ml-based_model

@@ -196,13 +196,27 @@ html_theme_options = {
         "color-brand-primary": "#0F6F8A",
         "color-brand-content": "#0F6F8A",
     },
+    # Override dark css variables to simplify dashboarding
     "dark_css_variables": {
-        "color-brand-primary": "#34C3EB",
-        "color-brand-content": "#34C3EB",
+        "color-background-primary": "#ffffff",
+        "color-background-secondary": "#f8f9fb",
+        "color-foreground-primary": "#2b2b2b",
+        "color-foreground-secondary": "#4a4a4a",
+        "color-foreground-border": "#878787",
+        "color-sidebar-background-border": "#eeebee",
+        "color-sidebar-search-border": "#eeebee",
+        "color-background-hover": "#efeff4ff",
+        "color-brand-primary": "#0F6F8A",
+        "color-brand-content": "#0F6F8A",
     },
+    # "dark_css_variables": {
+    #     "color-brand-primary": "#34C3EB",
+    #     "color-brand-content": "#34C3EB",
+    # },
     # Note these paths must be relative to `_static/`
     "light_logo": "img/icon-light.svg",
-    "dark_logo": "img/icon-dark.svg",
+    "dark_logo": "img/icon-light.svg",
+    # "dark_logo": "img/icon-dark.svg",
 }
 
 # The name of an image file (relative to this directory) to place at the top
