@@ -63,8 +63,8 @@ Participating forecasts
    ================ ================================ =========
    **Forecast**     **Type**                         **Added**
    ================ ================================ =========
-   `Contrails.org`_ Deterministic, physics-based     V1
-   `Google`_        Probabilistic, ML-physics hybrid V1
+   `Contrails.org`_ Deterministic, physics-based     v1
+   `Google`_        Probabilistic, ML-physics hybrid v1
    ================ ================================ =========
 
 For examples showing how to access participating forecasts,
@@ -83,9 +83,9 @@ Evaluation datasets
    ================ ================================ =========
    **Observation**  **Type**                         **Added**
    ================ ================================ =========
-   `ContrailWatch`_ Geostationary Satellite          V1
-   `GRUAN`_         In-situ (radiosonde)             V1
-   `IAGOS`_         In-situ (aircraft)               V1
+   `ContrailWatch`_ Geostationary Satellite          v1
+   `GRUAN`_         In-situ (radiosonde)             v1
+   `IAGOS`_         In-situ (aircraft)               v1
    ================ ================================ =========
 
 We also provide a public ADS-B dataset used to compute cost metrics.
@@ -119,7 +119,7 @@ or write to info@contrails.org and we'll assess its suitability.
 
 .. _Github issue: https://github.com/contrailcirrus/contrail-bench/issues
 
-.. _V1: reports/V1/V1.rst
+.. _v1: reports/v1/v1.rst
 
 .. _Contrails.org: https://apidocs.contrails.org/notebooks/forecast_api.html
 .. _Google: https://developers.google.com/contrails/v1/forecast-description#ml-based_model
