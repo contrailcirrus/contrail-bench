@@ -88,10 +88,8 @@ def count_adsb(time: datetime.datetime, flight_level: int) -> list[tuple[str, in
     gcs_path = f"{GCP_ADSB_TMPDIR}/{int(time.timestamp())}_{flight_level}.pq"
     df = pd.read_parquet(gcs_path)
     total = len(df)
-    if time >= datetime.datetime(2024, 5, 1, 0, 0):
-        goes = (df["longitude"].between(-135, -30) & df["latitude"].between(-50, 50)).sum()
-    else:
-        goes = 0
+    goes = (df["longitude"].between(-135, -30) & df["latitude"].between(-50, 50)).sum()
+    contrailwatch = (df["longitude"].between(-134, -63) & df["latitude"].between(20, 50)).sum()    
         
     total_flight_m = df["flight_distance"].sum().item()
     geos_invis_flight_m_north = df[df["latitude"] > 66.5]["flight_distance"].sum().item()
@@ -100,6 +98,7 @@ def count_adsb(time: datetime.datetime, flight_level: int) -> list[tuple[str, in
 
     return [
         ("goeseast", goes),
+        ("contrailwatch", contrailwatch),
         ("total", total),
         ("total_flight_m", total_flight_m),
         ("geos_invis_flight_m_north", geos_invis_flight_m_north),
