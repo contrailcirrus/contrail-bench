@@ -4,6 +4,8 @@ ContrailBench
 
 *Benchmarking forecasts for contrail avoidance.*
 
+   See `Introducing ContrailBench: Measuring contrail forecasts against reality <https://notebook.contrails.org/introducing-contrailbench/>`_ for more background on the framework and the methodology behind the first release.
+
 ========
 Overview
 ========
