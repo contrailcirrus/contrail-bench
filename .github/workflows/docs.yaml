@@ -1,0 +1,62 @@
+# Build sphinx documentation
+#
+# Currently hosted at https://bench.contrails.org
+name: Docs
+
+on:
+  # Run this workflow whenever a new commit is pushed to main or tag is set
+  push: 
+    branches: 
+      - 'main'
+    tags:
+      - '*'
+
+  # Allow run through Github actions page
+  workflow_dispatch: {}
+
+# Allow one concurrent deployment
+concurrency:
+  group: "docs"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: OS Dependencies
+        run: sudo apt-get install -y pandoc
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install ".[docs]"
+
+      - name: Build docs
+        run: |
+          make docs
+          ls -la docs/_build/html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: 'docs/_build/html/'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
