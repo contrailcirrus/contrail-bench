@@ -5,7 +5,7 @@
 .DEFAULT_GOAL  := help
 PYTHON         := python
 # PIP  		   := python -m pip
-PIP  		   := uv pip # use uv: https://docs.astral.sh/uv/
+PIP  		      := uv pip # use uv: https://docs.astral.sh/uv/
 PACKAGE        := contrailscope
 PYTEST         := pytest
 RUFF           := ruff

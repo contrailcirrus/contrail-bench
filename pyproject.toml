@@ -1,6 +1,6 @@
 # https://setuptools.readthedocs.io/en/latest/
 [build-system]
-requires = ["cython>=3", "numpy>=2.0.0", "setuptools>=77", "setuptools-scm>=8"]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -105,7 +105,7 @@ exclude = ["docs*", "tests*"]
 
 # https://github.com/pypa/setuptools_scm/
 [tool.setuptools_scm]
-write_to = "contrail-bench/_version.py"
+write_to = "contrailbench/_version.py"
 local_scheme = "no-local-version"
 
 # mypy static type checking
@@ -184,7 +184,7 @@ ignore = [
 
 # https://docs.astral.sh/ruff/settings/#lintisort
 [tool.ruff.lint.isort]
-known-first-party = ["contrailbench", "pycontrails"]
+known-first-party = ["contrailbench"]
 
 # https://docs.astral.sh/ruff/settings/#pydocstyle
 [tool.ruff.lint.pydocstyle]
@@ -204,5 +204,8 @@ style = "numpy"
 skip-checking-raises = true
 check-class-attributes = false
 
-[tool.uv.pip]
-prerelease = "allow"  # required by apache_beam dependencies
+[tool.uv]
+override-dependencies = [
+    "envoy-data-plane",  # unnecessary beam constraint
+]
+
