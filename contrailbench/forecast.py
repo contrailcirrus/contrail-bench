@@ -1,12 +1,15 @@
 """Forecast evaluation."""
 
-from collections.abc import Iterable
+import datetime
+import itertools
+from collections.abc import Iterable, Iterator
 
-import numpy as np
+import apache_beam as beam
 import pandas as pd
 import xarray as xr
-from scipy.ndimage import binary_dilation
+from apache_beam.options.pipeline_options import PipelineOptions
 
+from contrailbench import io
 from contrailbench.data import Dataloader
 from contrailbench.metrics import Metric
 from contrailbench.types import DatetimeLike
@@ -29,29 +32,35 @@ class Forecast:
         self.extent = extent
         self.buffers = list(buffers)
 
-    def evaluate(self, path: str, **metrics: Metric) -> None:
+    def evaluate(self, **metrics: Metric) -> xr.Dataset:
         """Evaluate forecast against a list of metrics."""
-        ds_list_list = []
-        for time in self.times:
-            ds_list = []
-            for flight_level in self.flight_levels:
-                ds_list.append(self._evaluate_shard(time, flight_level, metrics))
-            ds_list_list.append(ds_list)
+        pcoll = itertools.product(self.times, self.flight_levels)
+        ds_list = []
+        for time, flight_level in pcoll:
+            ds = self._evaluate_shard(time, flight_level, metrics)
+            ds_list.append(ds)
+        return _concatenate_fl_time(ds_list)
 
-        ds = xr.combine_nested(  # noqa
-            ds_list_list,
-            concat_dim=["time", "flight_level"],
-            compat="no_conflicts",
-        )
-        breakpoint()
+    def evaluate_beam(
+        self, outputs: str, intermediates: str, options: PipelineOptions, **metrics: Metric
+    ) -> None:
+        """Evaluate forecast using Beam."""
+        pcoll = itertools.product(self.times, self.flight_levels)
+
+        with beam.Pipeline(options=options) as pipeline:
+            (
+                pipeline
+                | "Create PCollection" >> beam.Create(pcoll)
+                | "Compute metrics" >> beam.ParDo(_Evaluate(self, metrics, intermediates))
+                | "Group results" >> beam.GroupByKey()
+                | "Save to GCS" >> beam.ParDo(_Concatenate(outputs))
+            )
 
     def _evaluate_shard(
         self, time: pd.Timestamp, flight_level: int, metrics: dict[str, Metric]
     ) -> xr.Dataset:
         """Run evaluation on a single shard."""
         forecast = self.dataloader.data(time, flight_level, self.extent)
-        forecast = _apply_horizontal_buffers(forecast, self.buffers)
-
         ds_list = []
         for name, metric in metrics.items():
             data = metric.dataloader.data(time, flight_level, self.extent)
@@ -64,32 +73,64 @@ class Forecast:
         return xr.merge(ds_list, compat="identical")
 
 
-def _apply_horizontal_buffers(forecast: xr.Dataset, buffers: list(int)) -> xr.Dataset:
-    """Apply horizontal buffering to forecast PCR.
+class _Evaluate(beam.DoFn):
+    """Run evaluation on a single shard of data."""
 
-    This function mutates and returns the input Dataset.
-    """
+    def __init__(self, forecast: Forecast, metrics: dict[str, Metric], intermediates: str) -> None:
+        self.forecast = forecast
+        self.metrics = metrics
+        self.intermediates = intermediates
 
-    pcr = forecast["pcr"]
-    structure = np.array([[False, True, False], [True, True, True], [False, True, False]])
+    def process(self, element: tuple[pd.Timestamp, int]) -> Iterator[tuple[str, str]]:
+        time, flight_level = element
+        ds = self.forecast._evaluate_shard(time, flight_level, self.metrics)
 
-    pad = max(buffers)
-    pad_left = pcr.values[-pad:, ...]
-    pad_right = pcr.values[:pad, ...]
-    padded = np.concat((pad_left, pcr.values, pad_right), axis=0)
+        ts = int(time.timestamp())
+        sink = f"{self.intermediates}/{ts}_{flight_level}.nc"
+        io.write(sink, ds.to_netcdf())
 
-    buffered = np.stack(
-        [
-            binary_dilation(padded, structure=structure, iterations=size) if size >= 1 else padded
-            for size in buffers
-        ],
-        axis=-1,
+        key = time.strftime("%Y%m%d")
+        yield key, sink
+
+
+class _Concatenate(beam.DoFn):
+    """Concatenate and save shards."""
+
+    def __init__(self, output: str) -> None:
+        self.output = output
+
+    def process(self, element: tuple[str, Iterable[str]]) -> None:
+        key, paths = element
+        ds_list = [io.load_dataset(path) for path in paths]
+        ds = _concatenate_fl_time(ds_list)
+        sink = f"{self.output}/{key}.nc"
+        io.write(sink, ds.to_netcdf())
+
+
+def _concatenate_fl_time(ds_list: list[xr.Dataset]) -> xr.Dataset:
+    """Concatenate list of Datasets by flight level and time."""
+
+    # itertools.groupby requires an iterable sorted by grouping key
+    ds_list = sorted(ds_list, key=_time_key)
+    nested = [sorted(g, key=_fl_key) for _, g in itertools.groupby(ds_list, key=_time_key)]
+
+    ds = xr.combine_nested(
+        nested,
+        concat_dim=["time", "flight_level"],
+        compat="no_conflicts",
     )
-    buffered = buffered[pad:-pad, ...]
 
-    new_dims = (*pcr.dims, "buffer")
-    new_coords = pcr.coords.assign(buffer=buffers)
-    out = xr.DataArray(buffered, dims=new_dims, coords=new_coords)
+    # Let xarray determine appropriate units on write
+    ds["time"].encoding.pop("units", None)
 
-    forecast["pcr"] = out
-    return forecast
+    return ds
+
+
+def _time_key(ds: xr.Dataset) -> datetime.datetime:
+    """Extract time from dataset for use as key."""
+    return ds["time"].item()
+
+
+def _fl_key(ds: xr.Dataset) -> int:
+    """Extract flight level from dataset for use as key."""
+    return ds["flight_level"].item()

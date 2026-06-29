@@ -28,11 +28,11 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 dependencies = [
    "aiohttp>=3.13",
-   "gcsfs>=2026.6",
+   "apache-beam[gcp]>=2.74",
+   "fsspec[gcs]>=2026.6",
    "netCDF4>=1.7",
    "numpy>=2.4",
    "pandas>=3.0",
-   "pyarrow>=24.0",
    "scipy>=1.18",
    "xarray>=2026.4"
 ]
@@ -203,3 +203,6 @@ extend-immutable-calls = ["numpy.timedelta64", "numpy.float32", "os.path.join"]
 style = "numpy"
 skip-checking-raises = true
 check-class-attributes = false
+
+[tool.uv.pip]
+prerelease = "allow"  # required by apache_beam dependencies
