@@ -24,13 +24,11 @@ class Forecast:
         times: Iterable[DatetimeLike],
         flight_levels: Iterable[int],
         extent: tuple[float, float, float, float] | None,
-        buffers: Iterable[int],
     ) -> None:
         self.dataloader = dataloader
         self.times = [pd.to_datetime(t) for t in times]
         self.flight_levels = list(flight_levels)
         self.extent = extent
-        self.buffers = list(buffers)
 
     def evaluate(self, **metrics: Metric) -> xr.Dataset:
         """Evaluate forecast against a list of metrics."""
