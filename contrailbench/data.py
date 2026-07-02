@@ -14,7 +14,12 @@ from contrailbench.types import DatetimeLike
 class Dataloader(ABC):
     """Base class for data loaders.
 
-    Implementing classes must implement the :meth:`data`
+    Dataloaders are used by other classes to request data for a specific
+    time, flight level, and (optionally) geographic extent.
+
+    Implementing classes must implement the :meth:`data` method. This method
+    is required to return data as an xarray Dataset but places no restrictions
+    on the structure or content of the dataset.
     """
 
     @abstractmethod
@@ -24,7 +29,22 @@ class Dataloader(ABC):
         flight_level: int,
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
-        """Load a single shard of data."""
+        """Load a single shard of data.
+
+        Parameters
+        ----------
+        time : DatetimeLike
+            Requested time.
+
+        flight_level : int
+            Requested flight level.
+
+        extent : tuple[float, float, float, float] | None
+            Requested geographic area (optional). Elements represent,
+            in order, the westward-most latitude, eastward-most latitude,
+            southward-most longitude, and northward-most longitude of
+            a bounding box.
+        """
 
 
 class ADSBDataloader(Dataloader):

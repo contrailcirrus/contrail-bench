@@ -16,7 +16,44 @@ from contrailbench.types import DatetimeLike
 
 
 class Forecast:
-    """PCR forecast evaluation."""
+    """Load and evaluate a forecast.
+
+    Parameters
+    ----------
+    dataloader: Dataloader
+        Dataloader used to provide forecast data.
+
+    times : Iterable[DatetimeLike]
+        Times included in evaluation.
+
+    flight_levels: Iterable[int]
+        Flight levels included in evaluation.
+
+    extent : tuple[float, float, float, float]
+        Geographic area included in evaluation (optional). Elements represent,
+        in order, the westward-most latitude, eastward-most latitude,
+        southward-most longitude, and northward-most longitude of
+        a bounding box.
+    """
+
+    __slots__ = (
+        "dataloader",
+        "extent",
+        "flight_levels",
+        "times",
+    )
+
+    #: Dataloader used to provide forecast data
+    dataloader: Dataloader
+
+    #: Times included in evaluation
+    times: list[pd.Timestamp]
+
+    #: Flight levels included in evaluation
+    flight_levels: list[int]
+
+    #: Longitude-latitude bounded box included in evaluation
+    extent: tuple[float, float, float, float] | None
 
     def __init__(
         self,
@@ -31,7 +68,24 @@ class Forecast:
         self.extent = extent
 
     def evaluate(self, **metrics: Metric) -> xr.Dataset:
-        """Evaluate forecast against a list of metrics."""
+        """Evaluate forecast against a set of metrics.
+
+        This function runs locally without any parallelization
+        and is best suited for small-scale tests.
+
+        Parameters
+        ----------
+        **metrics : Metric
+            Metrics included in evaluation.
+
+        Returns
+        -------
+        xr.Dataset
+            Statistics computed by metrics used for evaluation.
+            Names of variables representing computed statistics
+            are prefixed by the name of the keyword argument
+            assigned to the associated metric.
+        """
         pcoll = itertools.product(self.times, self.flight_levels)
         ds_list = []
         for time, flight_level in pcoll:
@@ -42,7 +96,30 @@ class Forecast:
     def evaluate_beam(
         self, outputs: str, intermediates: str, options: PipelineOptions, **metrics: Metric
     ) -> None:
-        """Evaluate forecast using Beam."""
+        """Evaluate forecast against a set of metrics.
+
+        This function runs using an Apache Beam pipeline and is designed for
+        parallel processing of large-scale datasets.
+
+        Parameters
+        ----------
+        outputs : str
+            Location where final pipeline outputs are saved. Any fsspec-supported filesystem can
+            be used. Outputs are grouped by date and saved to netCDF files at
+            ``<outputs>/YYYYmmmdd.nc``. See :math:`evaluate` for details about the format of
+            output netCDFs.
+
+        intermediates : str
+            Location where intermediate pipeline outputs are cached. Any fsspec-supported filesystem
+            can be used. Intermediate outputs are not intended to be accessed directly, but deletion
+            after pipelines finish is the responsibility of the user.
+
+        options : PipelineOptions
+            Beam pipeline configuration options.
+
+        **metrics : Metric
+            Metrics included in evaluation.
+        """
         pcoll = itertools.product(self.times, self.flight_levels)
 
         with beam.Pipeline(options=options) as pipeline:
