@@ -53,10 +53,12 @@ BENCHMARK_LATITUDE = np.linspace(-80.0, 80.0, 641)
 BENCHMARK_LONGITUDE_BNDS = np.linspace(-180.125, 179.875, 1441)
 BENCHMARK_LATITUDE_BNDS = np.linspace(-80.125, 80.125, 642)
 
-#: CONUS bounding box, (lon_min, lon_max, lat_min, lat_max). Matches
-#: ``contrailbench.datalib.metoffice.s3.CONUS_EXTENT`` and the ``EXTENT`` constant
-#: duplicated across ``reports/jay_extension/pipelines/*_contrailwatch_region.py``.
-CONUS_EXTENT = (-134, -63, 20, 50)
+#: CONUS bounding box, (lon_min, lon_max, lat_min, lat_max). Canonically defined
+#: on :data:`contrailbench.datalib.metoffice.s3.CONUS_EXTENT` -- re-exported here
+#: (not duplicated) since this module already imports ``s3`` before this point,
+#: and ``s3`` cannot import this constant back without a definition-order cycle
+#: (this module imports ``s3`` before its own module-level constants exist).
+CONUS_EXTENT = s3.CONUS_EXTENT
 
 #: Shanwick OCA bounding box, (lon_min, lon_max, lat_min, lat_max).
 SHANWICK_EXTENT = (-30.0, -10.0, 45.0, 61.0)
