@@ -51,8 +51,11 @@ class Dataloader(ABC):
 class ADSBDataloader(Dataloader):
     """Data loader for public ADSB evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/adsb"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/adsb"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -81,8 +84,11 @@ class ADSBDataloader(Dataloader):
 class IAGOSDataloader(Dataloader):
     """Data loader for public IAGOS evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/iagos"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/iagos"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -112,8 +118,11 @@ class IAGOSDataloader(Dataloader):
 class GRUANDataloader(Dataloader):
     """Data loader for public GRUAN evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/gruan"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/gruan"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -143,7 +152,11 @@ class GRUANDataloader(Dataloader):
 class ContrailWatchDataloader(Dataloader):
     """Data loader for public ContrailWatch evaluation dataset."""
 
-    path: str = "gs://contrailbench-public-data/v1/contrailwatch"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/contrailwatch"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
