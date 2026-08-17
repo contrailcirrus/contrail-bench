@@ -117,7 +117,16 @@ class HitRate(Metric):
     -------
     xr.Dataset
         Observed PCR area (total, ``"observed_pcr_area"``; and in forecast PCRs,
-        ``"observed_pcr_area_in_forecast_pcr"``), summed over longitude and latitude.
+        ``"observed_pcr_area_in_forecast_pcr"``), summed over longitude and
+        latitude. Also includes per-point observation-count support:
+        ``"n_obs_cells"`` is the threshold-independent denominator population
+        (observation grid cells with any observed PCR evidence);
+        ``"n_obs_cells_in_pcr"`` is how many of those fall inside the forecast
+        PCR mask at each threshold -- it shrinks at stricter thresholds as the
+        forecast PCR region shrinks, which is the reliability signal a reader
+        needs per point (particularly useful for a region/period with few
+        observation cells, where a hit-rate ratio alone hides how many points
+        it's actually computed from).
     """
 
     @override
@@ -127,5 +136,10 @@ class HitRate(Metric):
         area_tot = data["area"].sum("cell")
 
         return xr.Dataset(
-            {"observed_pcr_area_in_forecast_pcr": area_pred, "observed_pcr_area": area_tot}
+            {
+                "observed_pcr_area_in_forecast_pcr": area_pred,
+                "observed_pcr_area": area_tot,
+                "n_obs_cells": data.sizes["cell"],
+                "n_obs_cells_in_pcr": predicted.sum("cell"),
+            }
         )
