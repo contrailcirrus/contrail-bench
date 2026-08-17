@@ -1,8 +1,10 @@
 """Forecast evaluation."""
 
 import datetime
+import hashlib
 import itertools
-from collections.abc import Iterable, Iterator
+import json
+from collections.abc import Collection, Iterable, Iterator
 
 import apache_beam as beam
 import pandas as pd
@@ -94,7 +96,13 @@ class Forecast:
         return _concatenate_fl_time(ds_list)
 
     def evaluate_beam(
-        self, outputs: str, intermediates: str, options: PipelineOptions, **metrics: Metric
+        self,
+        outputs: str,
+        intermediates: str,
+        options: PipelineOptions,
+        *,
+        resume: bool = True,
+        **metrics: Metric,
     ) -> None:
         """Evaluate forecast against a set of metrics.
 
@@ -117,16 +125,23 @@ class Forecast:
         options : PipelineOptions
             Beam pipeline configuration options.
 
+        resume : bool, optional
+            Default ``True``. Skip days whose output file already exists (see
+            :func:`pending_output_days`), and skip individual shards whose
+            cached intermediate matches this run's configuration (see
+            :class:`_Evaluate`). Pass ``False`` to force a full recompute.
+
         **metrics : Metric
             Metrics included in evaluation.
         """
-        pcoll = itertools.product(self.times, self.flight_levels)
+        times = pending_output_days(self.times, outputs, resume=resume)
+        pcoll = itertools.product(times, self.flight_levels)
 
         with beam.Pipeline(options=options) as pipeline:
             (
                 pipeline
                 | "Create PCollection" >> beam.Create(pcoll)
-                | "Compute metrics" >> beam.ParDo(_Evaluate(self, metrics, intermediates))
+                | "Compute metrics" >> beam.ParDo(_Evaluate(self, metrics, intermediates, resume=resume))
                 | "Group results" >> beam.GroupByKey()
                 | "Save to GCS" >> beam.ParDo(_Concatenate(outputs))
             )
@@ -151,21 +166,110 @@ class Forecast:
 class _Evaluate(beam.DoFn):
     """Run evaluation on a single shard of data."""
 
-    def __init__(self, forecast: Forecast, metrics: dict[str, Metric], intermediates: str) -> None:
+    def __init__(
+        self, forecast: Forecast, metrics: dict[str, Metric], intermediates: str, resume: bool = True
+    ) -> None:
         self.forecast = forecast
         self.metrics = metrics
         self.intermediates = intermediates
+        self.resume = resume
+        self.signature = _shard_signature(forecast.dataloader, forecast.extent, metrics)
 
     def process(self, element: tuple[pd.Timestamp, int]) -> Iterator[tuple[str, str]]:
         time, flight_level = element
-        ds = self.forecast._evaluate_shard(time, flight_level, self.metrics)
-
         ts = time_utils.to_utc_timestamp(time)
         sink = f"{self.intermediates}/{ts}_{flight_level}.nc"
-        io.write(sink, ds.to_netcdf())
-
         key = time.strftime("%Y%m%d")
+
+        if self.resume and io.exists(sink) and self._cached_signature_matches(sink):
+            yield key, sink
+            return
+
+        ds = self.forecast._evaluate_shard(time, flight_level, self.metrics)
+        ds.attrs["contrailbench_signature"] = self.signature
+        io.write(sink, ds.to_netcdf())
         yield key, sink
+
+    def _cached_signature_matches(self, sink: str) -> bool:
+        """Whether an existing shard was produced by this exact configuration.
+
+        Existence alone isn't enough once one generic entry point can serve
+        runs with different metrics/extent/dataloaders against the same
+        `intermediates` path -- without this check, a stale shard from an
+        earlier, differently-configured run would be silently reused instead
+        of recomputed. Any read failure (corrupted/partial file) is treated as
+        a miss, since recomputing is always safe and existence-based resume
+        checks must never trust a file they haven't verified.
+        """
+        try:
+            existing = io.load_dataset(sink)
+        except Exception:
+            return False
+        return existing.attrs.get("contrailbench_signature") == self.signature
+
+
+def _shard_signature(dataloader: Dataloader, extent: tuple[float, float, float, float] | None,
+                      metrics: dict[str, Metric]) -> str:
+    """Stable fingerprint of everything that affects a shard's content.
+
+    Used to validate a cached intermediate before trusting it as a resume
+    target -- two runs pointed at the same `intermediates` path with a
+    different metric set, extent, or dataloader must not silently share
+    shards, even though both would satisfy a bare existence check.
+    """
+    payload = {
+        "dataloader": repr(dataloader),
+        "extent": list(extent) if extent is not None else None,
+        "metrics": {
+            name: {"class": type(metric).__name__, "dataloader": repr(metric.dataloader)}
+            for name, metric in metrics.items()
+        },
+    }
+    blob = json.dumps(payload, sort_keys=True).encode()
+    return hashlib.sha256(blob).hexdigest()
+
+
+def pending_output_days(
+    times: Collection[pd.Timestamp], outputs: str, resume: bool = True
+) -> list[pd.Timestamp]:
+    """Restrict `times` to those whose day-output file doesn't exist yet.
+
+    `_Concatenate` writes `{outputs}/{day}.nc` from only the shards seen in
+    the current run, so resuming at anything finer than whole-day granularity
+    would silently truncate a day's file to just the newly (re)computed
+    hours. Redoing a whole day is the safe unit of resumability here --
+    bounded to at most 24h x len(flight_levels) of rework, further reduced by
+    `_Evaluate`'s own per-shard skip for hours already cached from a prior run
+    of this same configuration.
+
+    Parameters
+    ----------
+    times : Collection[pd.Timestamp]
+        Candidate times, in order.
+
+    outputs : str
+        Output directory a completed day's file would be written to.
+
+    resume : bool, optional
+        Default ``True``. ``False`` returns ``times`` unchanged (always redo
+        everything).
+
+    Returns
+    -------
+    list[pd.Timestamp]
+        `times`, excluding every time whose day already has a complete output
+        file.
+    """
+    if not resume:
+        return list(times)
+
+    times = list(times)
+    days_needed = {
+        pd.Timestamp(t).strftime("%Y%m%d")
+        for t in times
+        if not io.exists(f"{outputs}/{pd.Timestamp(t):%Y%m%d}.nc")
+    }
+    return [t for t in times if pd.Timestamp(t).strftime("%Y%m%d") in days_needed]
 
 
 class _Concatenate(beam.DoFn):
