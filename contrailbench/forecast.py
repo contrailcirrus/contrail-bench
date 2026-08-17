@@ -9,7 +9,7 @@ import pandas as pd
 import xarray as xr
 from apache_beam.options.pipeline_options import PipelineOptions
 
-from contrailbench import io
+from contrailbench import io, time_utils
 from contrailbench.data import Dataloader
 from contrailbench.metrics import Metric
 from contrailbench.types import DatetimeLike
@@ -160,7 +160,7 @@ class _Evaluate(beam.DoFn):
         time, flight_level = element
         ds = self.forecast._evaluate_shard(time, flight_level, self.metrics)
 
-        ts = int(time.timestamp())
+        ts = time_utils.to_utc_timestamp(time)
         sink = f"{self.intermediates}/{ts}_{flight_level}.nc"
         io.write(sink, ds.to_netcdf())
 

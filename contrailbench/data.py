@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
+from contrailbench import time_utils
 from contrailbench.constants import radius_earth
 from contrailbench.types import DatetimeLike
 
@@ -61,7 +62,7 @@ class ADSBDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -91,7 +92,7 @@ class IAGOSDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -122,7 +123,7 @@ class GRUANDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -152,7 +153,7 @@ class ContrailWatchDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None = None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
