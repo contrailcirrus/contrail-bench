@@ -75,9 +75,9 @@ class ADSBDataloader(Dataloader):
                 df["longitude"].between(lon_min, lon_max) & df["latitude"].between(lat_min, lat_max)
             ]
 
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
-        dist = xr.DataArray(df["flight_distance"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
+        dist = xr.DataArray(df["flight_distance"].astype("float64"), dims="cell")
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "flight_distance": dist})
 
@@ -109,8 +109,8 @@ class IAGOSDataloader(Dataloader):
             ]
 
         df = df.loc[df["pcr_distance"] > 0]
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
@@ -143,8 +143,8 @@ class GRUANDataloader(Dataloader):
             ]
 
         df = df.loc[df["pcr_count"] > 0]
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
@@ -177,8 +177,8 @@ class ContrailWatchDataloader(Dataloader):
             ]
 
         df = df.loc[df["attributed_flight_distance"] > 0]
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
