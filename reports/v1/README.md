@@ -6,6 +6,8 @@ Code for data preprocessing is organized in a series of [Apache Beam](https://be
 
 > **_Note:_** Most pipelines were written before a change to the ContrailBench versioning schema and use "2026Q1" in place of "v1".
 
+> **_Note:_** These pipelines construct `datetime` objects without an explicit timezone and rely on the executing environment's local time defaulting to UTC — true of the Google Cloud infrastructure used to produce the published v1 results, but **not guaranteed on an arbitrary machine**. Running these pipelines somewhere not configured for UTC will silently produce incorrect timestamps. If you're reproducing or extending this work outside a UTC-configured environment, review timezone handling before trusting new output.
+
 Code for producing results from preprocessed data is provided in [analysis.ipynb](analysis.ipynb). This notebook is backed entirely by public data. See [Instructions for Reproducing Results](#instructions-for-reproducing-results) for details on running the notebook.
 
 ## Instructions for reproducing results
