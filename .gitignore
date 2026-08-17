@@ -27,3 +27,6 @@ rgi_cython*.pyd
 docs/_build
 docs/api/
 docs/examples/airports
+
+# test fixture cache (downloaded on demand, see tests/datalib/metoffice/test_s3.py)
+tests/fixtures/metoffice/.cache/

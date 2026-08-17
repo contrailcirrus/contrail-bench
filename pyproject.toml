@@ -29,11 +29,17 @@ readme = { file = "README.md", content-type = "text/markdown" }
 dependencies = [
    "aiohttp>=3.13",
    "apache-beam[gcp]>=2.74",
+   "boto3>=1.43",
+   "dask>=2026.1",
    "fsspec[gcs]>=2026.6",
+   "h5netcdf>=1.8.1",
+   "h5py>=3.16",
    "netCDF4>=1.7",
    "numpy>=2.4",
    "pandas>=3.0",
+   "pycontrails>=0.63",
    "scipy>=1.18",
+   "zarr>=3.3.0",
    "xarray>=2026.4"
 ]
 dynamic = ["version"]
