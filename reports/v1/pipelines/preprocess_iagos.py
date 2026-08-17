@@ -147,7 +147,7 @@ def preprocess_iagos(time: datetime.datetime) -> None:
     ).values
     df["pcr"] = pcr
     df["quality_mask"] = quality_mask
-    df["altitude_ft"] = df["altitude_baro_m"]
+    df["altitude_ft"] = units.m_to_ft(df["altitude_baro_m"])
 
     longitude = np.linspace(-180.0, 179.75, 1440)  # 0.25 degrees
     latitude = np.linspace(-80.0, 80.0, 641)  # 0.25 degrees
