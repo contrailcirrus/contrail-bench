@@ -1,6 +1,5 @@
 """Forecast evaluation."""
 
-import datetime
 import hashlib
 import itertools
 import json
@@ -93,7 +92,7 @@ class Forecast:
         for time, flight_level in pcoll:
             ds = self._evaluate_shard(time, flight_level, metrics)
             ds_list.append(ds)
-        return _concatenate_fl_time(ds_list)
+        return _concatenate_fl_time(ds_list, self.times, self.flight_levels)
 
     def evaluate_beam(
         self,
@@ -143,7 +142,7 @@ class Forecast:
                 | "Create PCollection" >> beam.Create(pcoll)
                 | "Compute metrics" >> beam.ParDo(_Evaluate(self, metrics, intermediates, resume=resume))
                 | "Group results" >> beam.GroupByKey()
-                | "Save to GCS" >> beam.ParDo(_Concatenate(outputs))
+                | "Save to GCS" >> beam.ParDo(_Concatenate(outputs, self))
             )
 
     def _evaluate_shard(
@@ -185,7 +184,15 @@ class _Evaluate(beam.DoFn):
             yield key, sink
             return
 
-        ds = self.forecast._evaluate_shard(time, flight_level, self.metrics)
+        try:
+            ds = self.forecast._evaluate_shard(time, flight_level, self.metrics)
+        except FileNotFoundError:
+            # Missing forecast or observation data for this (time, flight_level)
+            # is routine, not exceptional -- partial source coverage is how
+            # these arms actually run. Skip rather than crash the pipeline;
+            # `_Concatenate` fills the gap with NaN and records it in `coverage`.
+            return
+
         ds.attrs["contrailbench_signature"] = self.signature
         io.write(sink, ds.to_netcdf())
         yield key, sink
@@ -275,41 +282,53 @@ def pending_output_days(
 class _Concatenate(beam.DoFn):
     """Concatenate and save shards."""
 
-    def __init__(self, output: str) -> None:
+    def __init__(self, output: str, forecast: Forecast) -> None:
         self.output = output
+        self.forecast = forecast
 
     def process(self, element: tuple[str, Iterable[str]]) -> None:
         key, paths = element
         ds_list = [io.load_dataset(path) for path in paths]
-        ds = _concatenate_fl_time(ds_list)
+        day_times = [t for t in self.forecast.times if t.strftime("%Y%m%d") == key]
+        ds = _concatenate_fl_time(ds_list, day_times, self.forecast.flight_levels)
         sink = f"{self.output}/{key}.nc"
         io.write(sink, ds.to_netcdf())
 
 
-def _concatenate_fl_time(ds_list: list[xr.Dataset]) -> xr.Dataset:
-    """Concatenate list of Datasets by flight level and time."""
+def _concatenate_fl_time(
+    ds_list: list[xr.Dataset],
+    expected_times: Collection[pd.Timestamp],
+    expected_flight_levels: Collection[int],
+) -> xr.Dataset:
+    """Concatenate shards by flight level and time, tolerating missing shards.
 
-    # itertools.groupby requires an iterable sorted by grouping key
-    ds_list = sorted(ds_list, key=_time_key)
-    nested = [sorted(g, key=_fl_key) for _, g in itertools.groupby(ds_list, key=_time_key)]
+    A (time, flight_level) combination can be legitimately absent -- partial
+    forecast-source coverage, an observation gap -- and that must not crash
+    the whole day's concatenation, as the previous nested-list-based
+    implementation did on any ragged group. Missing combinations are
+    reindexed to NaN and recorded in a `coverage` variable (1 = shard present,
+    0 = filled), so partial coverage is visible in the output instead of
+    silently absent.
+    """
+    expected_times = sorted(pd.Timestamp(t) for t in expected_times)
+    expected_flight_levels = sorted(expected_flight_levels)
 
-    ds = xr.combine_nested(
-        nested,
-        concat_dim=["time", "flight_level"],
-        compat="no_conflicts",
+    if not ds_list:
+        raise ValueError("cannot concatenate an empty shard list -- nothing to combine")
+
+    present = {(pd.Timestamp(ds["time"].item()), int(ds["flight_level"].item())) for ds in ds_list}
+    expanded = [ds.expand_dims(["time", "flight_level"]) for ds in ds_list]
+    combined = xr.combine_by_coords(expanded, join="outer")
+    ds = combined.reindex(time=expected_times, flight_level=expected_flight_levels)
+
+    coverage = xr.DataArray(
+        [[1 if (t, fl) in present else 0 for fl in expected_flight_levels] for t in expected_times],
+        dims=("time", "flight_level"),
+        coords={"time": expected_times, "flight_level": expected_flight_levels},
     )
+    ds = ds.assign(coverage=coverage)
 
     # Let xarray determine appropriate units on write
     ds["time"].encoding.pop("units", None)
 
     return ds
-
-
-def _time_key(ds: xr.Dataset) -> datetime.datetime:
-    """Extract time from dataset for use as key."""
-    return ds["time"].item()
-
-
-def _fl_key(ds: xr.Dataset) -> int:
-    """Extract flight level from dataset for use as key."""
-    return ds["flight_level"].item()
