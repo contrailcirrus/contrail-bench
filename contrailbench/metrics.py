@@ -96,36 +96,51 @@ class FlightDistance(Metric):
 
 
 class HitRate(Metric):
-    """Compute statistics for a PCR forecast area-weighted hit rate metric.
-
-    Parameters
-    ----------
-    forecast : xr.Dataset
-        PCR forecast. Must contain a boolean ``"pcr"`` variable with coordinates
-        that include ``"longitude"`` and ``"latitude"`` indicating locations of
-        forecast PCRs. Additional dimensions are permitted and allow evaluation
-        to be vectorized across variants of the forecast.
-
-    data : xr.Dataset
-        Gridded dataset of PCR observations. Must contain ``"longitude"``, ``"latitude"``,
-        and ``"area"`` as one-dimensional variables with dimension ``"cell"``,
-        representing the locations and areal extent of grid cells with observed evidence
-        of a PCR. Values in ``"longitude"`` and ``"latitude"`` must be a subset of the
-        longitude and latitude coordinates included in the PCR forecast.
-
-    Returns
-    -------
-    xr.Dataset
-        Observed PCR area (total, ``"observed_pcr_area"``; and in forecast PCRs,
-        ``"observed_pcr_area_in_forecast_pcr"``), summed over longitude and latitude.
-    """
+    """Area-weighted hit rate metric for PCR forecasts."""
 
     @override
     def statistics(self, forecast: xr.Dataset, data: xr.Dataset) -> xr.Dataset:
+        """Compute statistics for a PCR forecast area-weighted hit rate metric.
+
+        Parameters
+        ----------
+        forecast : xr.Dataset
+            PCR forecast. Must contain a boolean ``"pcr"`` variable with coordinates
+            that include ``"longitude"`` and ``"latitude"`` indicating locations of
+            forecast PCRs. Additional dimensions are permitted and allow evaluation
+            to be vectorized across variants of the forecast.
+
+        data : xr.Dataset
+            Gridded dataset of PCR observations. Must contain ``"longitude"``, ``"latitude"``,
+            and ``"area"`` as one-dimensional variables with dimension ``"cell"``,
+            representing the locations and areal extent of grid cells with observed evidence
+            of a PCR. Values in ``"longitude"`` and ``"latitude"`` must be a subset of the
+            longitude and latitude coordinates included in the PCR forecast.
+
+        Returns
+        -------
+        xr.Dataset
+            Observed PCR area (total, ``"observed_pcr_area"``; and in forecast PCRs,
+            ``"observed_pcr_area_in_forecast_pcr"``), summed over longitude and
+            latitude. Also includes per-point observation-count support:
+            ``"n_obs_cells"`` is the threshold-independent denominator population
+            (observation grid cells with any observed PCR evidence);
+            ``"n_obs_cells_in_pcr"`` is how many of those fall inside the forecast
+            PCR mask at each threshold -- it shrinks at stricter thresholds as the
+            forecast PCR region shrinks, which is the reliability signal a reader
+            needs per point (particularly useful for a region/period with few
+            observation cells, where a hit-rate ratio alone hides how many points
+            it's actually computed from).
+        """
         predicted = forecast["pcr"].sel(longitude=data["longitude"], latitude=data["latitude"])
         area_pred = data["area"].where(predicted).sum("cell")
         area_tot = data["area"].sum("cell")
 
         return xr.Dataset(
-            {"observed_pcr_area_in_forecast_pcr": area_pred, "observed_pcr_area": area_tot}
+            {
+                "observed_pcr_area_in_forecast_pcr": area_pred,
+                "observed_pcr_area": area_tot,
+                "n_obs_cells": data.sizes["cell"],
+                "n_obs_cells_in_pcr": predicted.sum("cell"),
+            }
         )

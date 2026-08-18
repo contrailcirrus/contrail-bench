@@ -1,12 +1,14 @@
 """Data loading."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Collection
 from typing import override
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
+from contrailbench import io, pcr, time_utils
 from contrailbench.constants import radius_earth
 from contrailbench.types import DatetimeLike
 
@@ -50,8 +52,11 @@ class Dataloader(ABC):
 class ADSBDataloader(Dataloader):
     """Data loader for public ADSB evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/adsb"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/adsb"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -61,7 +66,7 @@ class ADSBDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -70,9 +75,9 @@ class ADSBDataloader(Dataloader):
                 df["longitude"].between(lon_min, lon_max) & df["latitude"].between(lat_min, lat_max)
             ]
 
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
-        dist = xr.DataArray(df["flight_distance"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
+        dist = xr.DataArray(df["flight_distance"].astype("float64"), dims="cell")
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "flight_distance": dist})
 
@@ -80,8 +85,11 @@ class ADSBDataloader(Dataloader):
 class IAGOSDataloader(Dataloader):
     """Data loader for public IAGOS evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/iagos"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/iagos"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -91,7 +99,7 @@ class IAGOSDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -101,8 +109,8 @@ class IAGOSDataloader(Dataloader):
             ]
 
         df = df.loc[df["pcr_distance"] > 0]
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
@@ -111,8 +119,11 @@ class IAGOSDataloader(Dataloader):
 class GRUANDataloader(Dataloader):
     """Data loader for public GRUAN evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/gruan"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/gruan"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -122,7 +133,7 @@ class GRUANDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -132,8 +143,8 @@ class GRUANDataloader(Dataloader):
             ]
 
         df = df.loc[df["pcr_count"] > 0]
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
@@ -142,7 +153,11 @@ class GRUANDataloader(Dataloader):
 class ContrailWatchDataloader(Dataloader):
     """Data loader for public ContrailWatch evaluation dataset."""
 
-    path: str = "gs://contrailbench-public-data/v1/contrailwatch"
+    #: Default path to GCS directory
+    DEFAULT_PATH: str = "gs://contrailbench-public-data/v1/contrailwatch"
+
+    def __init__(self, path: str = DEFAULT_PATH) -> None:
+        self.path = path
 
     @override
     def data(
@@ -152,7 +167,7 @@ class ContrailWatchDataloader(Dataloader):
         extent: tuple[float, float, float, float] | None = None,
     ) -> xr.Dataset:
 
-        ts = int(pd.to_datetime(time).timestamp())
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
         df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
 
         if extent is not None:
@@ -162,8 +177,59 @@ class ContrailWatchDataloader(Dataloader):
             ]
 
         df = df.loc[df["attributed_flight_distance"] > 0]
-        lon = xr.DataArray(df["longitude"], dims="cell")
-        lat = xr.DataArray(df["latitude"], dims="cell")
+        lon = xr.DataArray(df["longitude"].astype("float64"), dims="cell")
+        lat = xr.DataArray(df["latitude"].astype("float64"), dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
+
+
+class PCRStoreDataloader(Dataloader):
+    """Data loader for a preprocessed PCR forecast store.
+
+    Reads per-(time, flight_level) netCDF files produced by a forecast
+    preprocessing step -- continuous ``rhi`` and binary ``sac`` fields on the
+    benchmark grid -- and sweeps a set of RHi thresholds to produce a boolean
+    ``pcr`` field with an added ``rhi_threshold`` dimension. Vectorizing the
+    sweep this way lets a single :meth:`Forecast.evaluate` call score every
+    threshold at once, instead of one preprocessing pass per threshold.
+
+    Parameters
+    ----------
+    path : str
+        Location of the forecast store. Must be on a filesystem supported by
+        fsspec.
+
+    rhi_thresholds : Collection[float], optional
+        RHi thresholds to sweep. Defaults to :data:`contrailbench.pcr.RHI_THRESHOLDS`.
+    """
+
+    def __init__(self, path: str, rhi_thresholds: Collection[float] = pcr.RHI_THRESHOLDS) -> None:
+        self.path = path
+        self.rhi_thresholds = list(rhi_thresholds)
+
+    @override
+    def data(
+        self,
+        time: DatetimeLike,
+        flight_level: int,
+        extent: tuple[float, float, float, float] | None,
+    ) -> xr.Dataset:
+        ts = time_utils.to_utc_timestamp(pd.to_datetime(time))
+        ds = io.load_dataset(f"{self.path}/{ts}_{flight_level}.nc")
+
+        # The stored file carries size-1 `time`/`level` dims (one fetch, one
+        # flight level); a Dataloader shard is scoped to exactly one of each,
+        # so both collapse to plain attributes of this shard rather than dims.
+        ds = ds.squeeze(("time", "level"), drop=True)
+
+        if extent is not None:
+            lon_min, lon_max, lat_min, lat_max = extent
+            ds = ds.sel(longitude=slice(lon_min, lon_max), latitude=slice(lat_min, lat_max))
+
+        thresholds = xr.DataArray(
+            self.rhi_thresholds, dims="rhi_threshold", coords={"rhi_threshold": self.rhi_thresholds}
+        )
+        pcr_swept = (ds["rhi"] > thresholds) & (ds["sac"] > 0)
+
+        return ds.drop_vars("pcr").assign(pcr=pcr_swept)
