@@ -3,8 +3,9 @@ Download all V1 benchmark parquet files from public GCS and compile into
 a single CSV for use in a Dash app.
 
 Columns in output CSV:
-  horizontal_buffer         – forecast buffer radius (Contrails.org only; n/a for Google)
-  probability_threshold     – probability threshold (Google only; n/a for Contrails.org)
+  horizontal_buffer         – forecast buffer radius (Contrails.org only; n/a otherwise)
+  probability_threshold     – probability threshold (Google only; n/a otherwise)
+  rhi_threshold             – RHi threshold (metoffice only; n/a otherwise)
   penalty                   – flight distance in forecast PCR (ratio)
   iagos_hit_rate            – IAGOS hit rate
   gruan_hit_rate            – GRUAN hit rate
@@ -14,8 +15,14 @@ Columns in output CSV:
   gruan_hit_rate_lo / _hi   – 95 % CI for GRUAN hit rate
   contrailwatch_hit_rate_lo / _hi  (CONUS benchmarks only)
   region                    – "global" or "conus"
-  season                    – "annual", "winter", "spring", "summer", "autumn"
-  forecast                  – "contrails-org" or "google"
+  season                    – "annual", "winter", "spring", "summer", "autumn", or
+                               "sepdec" (the full Sep-Dec 2024 CONUS window)
+  forecast                  – "contrails-org", "google", or "metoffice"
+
+The "metoffice"/"sepdec" row can't be published to the public GCS bucket used
+for the rest of this file (Met Office licensing is unresolved) -- ``read_pq``
+checks a local directory first, falling back to the public HTTPS mirror
+unchanged for every pre-existing row.
 """
 
 import io
@@ -25,6 +32,7 @@ from pathlib import Path
 import pandas as pd
 
 BASE = "https://storage.googleapis.com/contrailbench-public-data/v1/benchmarks"
+LOCAL_BASE = Path(__file__).parent / "data" / "benchmarks-local"
 
 BENCHMARKS = [
     # (file_stem,                     region,   season,   forecast)
@@ -40,10 +48,19 @@ BENCHMARKS = [
     ("global-summer-google",          "global", "summer", "google"),
     ("global-autumn-google",          "global", "autumn", "google"),
     ("conus-google",                  "conus",  "annual", "google"),
+    # Sep-Dec 2024 window, CONUS only.
+    ("conus-sepdec-metoffice",        "conus",  "sepdec", "metoffice"),
+    ("conus-sepdec-contrails-org",    "conus",  "sepdec", "contrails-org"),
+    ("conus-sepdec-google",           "conus",  "sepdec", "google"),
 ]
 
 
 def read_pq(stem: str) -> pd.DataFrame:
+    local_path = LOCAL_BASE / f"{stem}.pq"
+    if local_path.exists():
+        print(f"  read {local_path}")
+        return pd.read_parquet(local_path)
+
     url = f"{BASE}/{stem}.pq"
     print(f"  GET {url}")
     with urllib.request.urlopen(url) as response:
@@ -63,10 +80,17 @@ def main() -> None:
             merged.index.name = "horizontal_buffer"
             merged = merged.reset_index()
             merged["probability_threshold"] = pd.NA
-        else:
+            merged["rhi_threshold"] = pd.NA
+        elif forecast == "google":
             merged.index.name = "probability_threshold"
             merged = merged.reset_index()
             merged["horizontal_buffer"] = pd.NA
+            merged["rhi_threshold"] = pd.NA
+        else:  # "metoffice" -- RHi threshold sweep
+            merged.index.name = "rhi_threshold"
+            merged = merged.reset_index()
+            merged["horizontal_buffer"] = pd.NA
+            merged["probability_threshold"] = pd.NA
         merged["region"] = region
         merged["season"] = season
         merged["forecast"] = forecast
@@ -75,7 +99,7 @@ def main() -> None:
     combined = pd.concat(all_dfs, ignore_index=True)
 
     # Reorder: metadata columns first
-    meta_cols = ["region", "season", "forecast", "horizontal_buffer", "probability_threshold"]
+    meta_cols = ["region", "season", "forecast", "horizontal_buffer", "probability_threshold", "rhi_threshold"]
     data_cols = [c for c in combined.columns if c not in meta_cols]
     combined = combined[meta_cols + data_cols]
 
