@@ -13,10 +13,10 @@ import warnings
 import numpy as np
 import pytest
 import xarray as xr
-
-from contrailbench import pcr
 from pycontrails.core.met import MetDataset
 from pycontrails.physics import thermo
+
+from contrailbench import pcr
 
 
 def test_crop_benchmark_grid_slices_global_grid_exactly():
@@ -263,9 +263,7 @@ def test_interpolate_to_pressures_recovers_exact_input_at_native_levels():
 
     interpolated = pcr.interpolate_to_pressures(ds, [250.0, 200.0])
 
-    np.testing.assert_allclose(
-        interpolated["air_temperature"].values, ds["air_temperature"].values
-    )
+    np.testing.assert_allclose(interpolated["air_temperature"].values, ds["air_temperature"].values)
     np.testing.assert_allclose(
         interpolated["specific_humidity"].values, ds["specific_humidity"].values
     )

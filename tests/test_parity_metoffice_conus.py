@@ -41,7 +41,7 @@ DATA_ROOT = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data
 FORECAST_STORE = f"{DATA_ROOT}/metoffice-prefix-buggy"
 OBS_STORE = f"{DATA_ROOT}/_obs_cache/iagos-prefix-buggy"
 GOLDEN_DIR = f"{DATA_ROOT}/metoffice-iagos-contrailwatch-region"
-DST_BOUNDARY = datetime.datetime(2024, 10, 27, 1, 0, tzinfo=datetime.timezone.utc)
+DST_BOUNDARY = datetime.datetime(2024, 10, 27, 1, 0, tzinfo=datetime.UTC)
 
 
 def _find_dst_clean_hours_with_goldens() -> list[int]:
@@ -61,12 +61,14 @@ def _find_dst_clean_hours_with_goldens() -> list[int]:
 
     complete = [ts for ts, fls in forecast_ts.items() if fls == fl_set and obs_ts.get(ts) == fl_set]
     dst_clean = [
-        ts for ts in complete if datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc) >= DST_BOUNDARY
+        ts
+        for ts in complete
+        if datetime.datetime.fromtimestamp(ts, tz=datetime.UTC) >= DST_BOUNDARY
     ]
     return sorted(
         ts
         for ts in dst_clean
-        if f"{datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc):%Y%m%d%H}.pq" in goldens
+        if f"{datetime.datetime.fromtimestamp(ts, tz=datetime.UTC):%Y%m%d%H}.pq" in goldens
     )
 
 
@@ -80,7 +82,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.mark.parametrize("ts", _SAMPLE_HOURS)
 def test_new_pipeline_matches_golden_exactly(ts):
-    time = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc).replace(tzinfo=None)
+    time = datetime.datetime.fromtimestamp(ts, tz=datetime.UTC).replace(tzinfo=None)
 
     forecast = Forecast(
         PCRStoreDataloader(path=FORECAST_STORE),
@@ -104,7 +106,7 @@ def test_new_pipeline_matches_golden_exactly(ts):
         .reset_index(drop=True)
     )
 
-    key = f"{datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc):%Y%m%d%H}.pq"
+    key = f"{datetime.datetime.fromtimestamp(ts, tz=datetime.UTC):%Y%m%d%H}.pq"
     golden_df = (
         pd.read_parquet(f"{GOLDEN_DIR}/{key}")
         .sort_values(["flight_level", "rhi_threshold"])

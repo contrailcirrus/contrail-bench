@@ -4,7 +4,6 @@ import sys
 
 import numpy as np
 import pandas as pd
-import pytest
 import xarray as xr
 
 from contrailbench.pipelines import evaluate, materialize
@@ -21,7 +20,9 @@ class TestStoreDir:
         assert materialize.store_dir("metoffice", "conus", 24).endswith("/metoffice-lead024")
 
     def test_region_and_lead_suffixes_compose(self):
-        assert materialize.store_dir("metoffice", "shanwick", 48).endswith("/metoffice-shanwick-lead048")
+        assert materialize.store_dir("metoffice", "shanwick", 48).endswith(
+            "/metoffice-shanwick-lead048"
+        )
 
 
 class TestOutputDirs:
@@ -158,16 +159,24 @@ def test_evaluate_cli_end_to_end_with_synthetic_store(tmp_path, monkeypatch):
     monkeypatch.setattr(evaluate.pcr, "PCR_FLIGHT_LEVELS", flight_levels)
     monkeypatch.setattr(evaluate, "store_dir", lambda source, region, lead_hours: str(forecast_dir))
     monkeypatch.setattr(evaluate, "output_dirs", lambda *a, **kw: (outputs_dir, intermediates_dir))
-    monkeypatch.setitem(evaluate.METRICS, "iagos", (evaluate.HitRate, evaluate.IAGOSDataloader, str(obs_dir)))
+    monkeypatch.setitem(
+        evaluate.METRICS, "iagos", (evaluate.HitRate, evaluate.IAGOSDataloader, str(obs_dir))
+    )
 
     argv = [
         "evaluate.py",
-        "--source", "metoffice",
-        "--region", "conus",
-        "--metrics", "iagos",
-        "--runner", "direct",
-        "--start", "2024-09-01T00:00",
-        "--end", "2024-09-01T00:00",
+        "--source",
+        "metoffice",
+        "--region",
+        "conus",
+        "--metrics",
+        "iagos",
+        "--runner",
+        "direct",
+        "--start",
+        "2024-09-01T00:00",
+        "--end",
+        "2024-09-01T00:00",
     ]
     monkeypatch.setattr(sys, "argv", argv)
 

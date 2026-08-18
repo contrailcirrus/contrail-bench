@@ -24,7 +24,7 @@ _NAIVE_CASES = [
 ]
 
 
-@pytest.fixture
+@pytest.fixture()
 def system_timezone(monkeypatch):
     """Temporarily set the process's local timezone, restoring it afterward.
 
@@ -81,11 +81,9 @@ def test_to_utc_timestamp_accepts_pandas_timestamp(system_timezone, naive):
 def test_to_utc_timestamp_aware_datetime_respects_its_own_offset():
     """An already-aware datetime must not be silently reassigned to UTC -- it already
     unambiguously names an instant via its own tzinfo."""
-    aware_utc = datetime.datetime(2024, 10, 8, 12, 0, tzinfo=datetime.timezone.utc)
+    aware_utc = datetime.datetime(2024, 10, 8, 12, 0, tzinfo=datetime.UTC)
     naive_equivalent = datetime.datetime(2024, 10, 8, 12, 0)
-    assert time_utils.to_utc_timestamp(aware_utc) == time_utils.to_utc_timestamp(
-        naive_equivalent
-    )
+    assert time_utils.to_utc_timestamp(aware_utc) == time_utils.to_utc_timestamp(naive_equivalent)
 
     minus_five = datetime.timezone(datetime.timedelta(hours=-5))
     aware_minus_five = datetime.datetime(2024, 10, 8, 7, 0, tzinfo=minus_five)

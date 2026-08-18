@@ -12,6 +12,7 @@ import pathlib
 import numpy as np
 import pytest
 import xarray as xr
+from pycontrails.physics import thermo
 
 from contrailbench.datalib.metoffice import s3
 from contrailbench.datalib.metoffice.ukmo import (
@@ -21,7 +22,6 @@ from contrailbench.datalib.metoffice.ukmo import (
     MetOfficeUM,
     suppress_unregistered_source_warnings,
 )
-from pycontrails.physics import thermo
 
 LATITUDE = np.array([30.0, 31.0])
 LONGITUDE = np.array([-100.0, -99.0])

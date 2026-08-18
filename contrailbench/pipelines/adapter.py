@@ -56,4 +56,6 @@ def to_long_format(ds: xr.Dataset, metric: str) -> pd.DataFrame:
     df = df.dropna(subset=[str(v).removeprefix(prefix) for v in metric_vars], how="all")
 
     sort_cols = [c for c in ("time", "flight_level", "rhi_threshold") if c in df.columns]
-    return df.sort_values(sort_cols).reset_index(drop=True) if sort_cols else df.reset_index(drop=True)
+    return (
+        df.sort_values(sort_cols).reset_index(drop=True) if sort_cols else df.reset_index(drop=True)
+    )

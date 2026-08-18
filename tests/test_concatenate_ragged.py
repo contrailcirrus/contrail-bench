@@ -10,7 +10,6 @@ FileNotFoundError for specific shards.
 
 import numpy as np
 import pandas as pd
-import pytest
 import xarray as xr
 from apache_beam.options.pipeline_options import PipelineOptions
 
@@ -34,7 +33,9 @@ FLIGHT_LEVELS = [310, 320, 330]
 def test_ragged_group_no_longer_raises():
     """The exact scenario that crashed the old xr.combine_nested implementation:
     one (time, flight_level) combination missing from the middle of the group."""
-    shards = [_shard(t, fl, 1.0) for t in TIMES for fl in FLIGHT_LEVELS if (t, fl) != (TIMES[1], 320)]
+    shards = [
+        _shard(t, fl, 1.0) for t in TIMES for fl in FLIGHT_LEVELS if (t, fl) != (TIMES[1], 320)
+    ]
 
     # this must not raise
     result = _concatenate_fl_time(shards, TIMES, FLIGHT_LEVELS)
@@ -44,7 +45,9 @@ def test_ragged_group_no_longer_raises():
 
 
 def test_missing_combination_is_nan_filled():
-    shards = [_shard(t, fl, 1.0) for t in TIMES for fl in FLIGHT_LEVELS if (t, fl) != (TIMES[1], 320)]
+    shards = [
+        _shard(t, fl, 1.0) for t in TIMES for fl in FLIGHT_LEVELS if (t, fl) != (TIMES[1], 320)
+    ]
     result = _concatenate_fl_time(shards, TIMES, FLIGHT_LEVELS)
 
     missing = result["x"].sel(time=TIMES[1], flight_level=320)
@@ -55,7 +58,9 @@ def test_missing_combination_is_nan_filled():
 
 
 def test_coverage_variable_marks_present_and_missing_cells():
-    shards = [_shard(t, fl, 1.0) for t in TIMES for fl in FLIGHT_LEVELS if (t, fl) != (TIMES[1], 320)]
+    shards = [
+        _shard(t, fl, 1.0) for t in TIMES for fl in FLIGHT_LEVELS if (t, fl) != (TIMES[1], 320)
+    ]
     result = _concatenate_fl_time(shards, TIMES, FLIGHT_LEVELS)
 
     assert result["coverage"].sel(time=TIMES[1], flight_level=320).item() == 0

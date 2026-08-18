@@ -37,12 +37,12 @@ from collections.abc import Collection
 
 import numpy as np
 import xarray as xr
-
-from contrailbench import time_utils
-from contrailbench.datalib.metoffice import s3, ukmo
 from pycontrails.core.met import MetDataset
 from pycontrails.models import sac
 from pycontrails.physics import thermo, units
+
+from contrailbench import time_utils
+from contrailbench.datalib.metoffice import s3, ukmo
 
 #: Shared benchmark grid -- reused verbatim (not re-derived) from
 #: ``preprocess_adsb.py``/``preprocess_iagos.py`` so coordinate values are
@@ -524,6 +524,7 @@ def pending_times(
         ``times``, in order, excluding every time whose flight levels are all
         already present in ``existing_names``.
     """
+
     # `fsspec`-family `ls()` implementations (e.g. `gcsfs`) return paths with the
     # `gs://` scheme stripped, even when the listed directory was passed with it --
     # normalize both sides so this doesn't depend on which form the caller's listing
@@ -601,9 +602,7 @@ def kronecker_order(n: int) -> list[int]:
     return sorted(range(n), key=lambda i: (i * PHI_INV) % 1.0)
 
 
-def limit_times(
-    times: Collection[datetime.datetime], limit: int | None
-) -> list[datetime.datetime]:
+def limit_times(times: Collection[datetime.datetime], limit: int | None) -> list[datetime.datetime]:
     """First ``limit`` times per :func:`kronecker_order`; ``None`` returns all.
 
     Because ``kronecker_order`` computes one fixed permutation for a given

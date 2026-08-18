@@ -15,7 +15,7 @@ def _direct_options() -> PipelineOptions:
     return PipelineOptions(runner="direct", direct_num_workers=1)
 
 
-@pytest.fixture
+@pytest.fixture()
 def tiny_store(tmp_path):
     """A minimal 2-time x 2-flight-level forecast + observation store."""
     longitude = np.array([-10.0, -5.0, 0.0, 5.0])
@@ -36,7 +36,10 @@ def tiny_store(tmp_path):
                 {
                     "rhi": (("longitude", "latitude", "level", "time"), rhi),
                     "sac": (("longitude", "latitude", "level", "time"), sac),
-                    "pcr": (("longitude", "latitude", "level", "time"), (rhi > 1.0).astype("float32")),
+                    "pcr": (
+                        ("longitude", "latitude", "level", "time"),
+                        (rhi > 1.0).astype("float32"),
+                    ),
                 },
                 coords={
                     "longitude": longitude,
@@ -81,7 +84,9 @@ class TestShardSignature:
     def test_differs_when_metric_set_changes(self, tiny_store):
         forecast = _build_forecast(tiny_store)
         sig_one_metric = _shard_signature(
-            forecast.dataloader, forecast.extent, {"iagos": HitRate(IAGOSDataloader(path=tiny_store["obs_dir"]))}
+            forecast.dataloader,
+            forecast.extent,
+            {"iagos": HitRate(IAGOSDataloader(path=tiny_store["obs_dir"]))},
         )
         sig_two_metrics = _shard_signature(
             forecast.dataloader,
@@ -158,7 +163,10 @@ class TestEvaluateBeamResume:
         forecast = _build_forecast(tiny_store)
 
         forecast.evaluate_beam(
-            outputs, intermediates, _direct_options(), iagos=HitRate(IAGOSDataloader(path=tiny_store["obs_dir"]))
+            outputs,
+            intermediates,
+            _direct_options(),
+            iagos=HitRate(IAGOSDataloader(path=tiny_store["obs_dir"])),
         )
 
         call_count = 0
@@ -178,7 +186,10 @@ class TestEvaluateBeamResume:
         outputs2 = str(tmp_path / "outputs2")
         forecast2 = _build_forecast(tiny_store)
         forecast2.evaluate_beam(
-            outputs2, intermediates, _direct_options(), iagos_v2=HitRate(IAGOSDataloader(path=tiny_store["obs_dir"]))
+            outputs2,
+            intermediates,
+            _direct_options(),
+            iagos_v2=HitRate(IAGOSDataloader(path=tiny_store["obs_dir"])),
         )
 
         expected_shards = len(tiny_store["times"]) * len(tiny_store["flight_levels"])

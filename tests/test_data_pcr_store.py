@@ -15,14 +15,16 @@ from contrailbench import pcr
 from contrailbench.data import PCRStoreDataloader
 
 
-def _old_apply_rhi_threshold(rhi: xr.DataArray, sac: xr.DataArray, threshold: float) -> xr.DataArray:
+def _old_apply_rhi_threshold(
+    rhi: xr.DataArray, sac: xr.DataArray, threshold: float
+) -> xr.DataArray:
     """Verbatim copy of the pre-port per-threshold logic, kept here only as an
     independent reference for the bit-identity test below -- not imported from
     production code, since that code path is exactly what this port replaces."""
     return (rhi > threshold) & (sac > 0)
 
 
-@pytest.fixture
+@pytest.fixture()
 def synthetic_store(tmp_path):
     """A minimal on-disk store matching the real schema: `time`/`level` dims of
     size 1, `longitude`/`latitude`, `rhi`/`sac`/`pcr` variables."""
@@ -36,7 +38,10 @@ def synthetic_store(tmp_path):
         {
             "rhi": (("longitude", "latitude", "level", "time"), rhi),
             "sac": (("longitude", "latitude", "level", "time"), sac),
-            "pcr": (("longitude", "latitude", "level", "time"), ((rhi > 1.0) & (sac > 0)).astype("float32")),
+            "pcr": (
+                ("longitude", "latitude", "level", "time"),
+                ((rhi > 1.0) & (sac > 0)).astype("float32"),
+            ),
         },
         coords={
             "longitude": longitude,
@@ -98,7 +103,9 @@ def test_extent_crops_to_requested_bounding_box(synthetic_store):
 
 def test_reads_real_metoffice_store_file():
     """Smoke test against an actual on-disk forecast file, not just synthetic data."""
-    loader = PCRStoreDataloader(path="/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data/metoffice")
+    loader = PCRStoreDataloader(
+        path="/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data/metoffice"
+    )
     result = loader.data(pd.Timestamp("2024-09-01T00:00:00"), 310, None)
 
     assert "time" not in result.dims

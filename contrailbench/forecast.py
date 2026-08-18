@@ -140,7 +140,8 @@ class Forecast:
             (
                 pipeline
                 | "Create PCollection" >> beam.Create(pcoll)
-                | "Compute metrics" >> beam.ParDo(_Evaluate(self, metrics, intermediates, resume=resume))
+                | "Compute metrics"
+                >> beam.ParDo(_Evaluate(self, metrics, intermediates, resume=resume))
                 | "Group results" >> beam.GroupByKey()
                 | "Save to GCS" >> beam.ParDo(_Concatenate(outputs, self))
             )
@@ -166,7 +167,11 @@ class _Evaluate(beam.DoFn):
     """Run evaluation on a single shard of data."""
 
     def __init__(
-        self, forecast: Forecast, metrics: dict[str, Metric], intermediates: str, resume: bool = True
+        self,
+        forecast: Forecast,
+        metrics: dict[str, Metric],
+        intermediates: str,
+        resume: bool = True,
     ) -> None:
         self.forecast = forecast
         self.metrics = metrics
@@ -215,8 +220,11 @@ class _Evaluate(beam.DoFn):
         return existing.attrs.get("contrailbench_signature") == self.signature
 
 
-def _shard_signature(dataloader: Dataloader, extent: tuple[float, float, float, float] | None,
-                      metrics: dict[str, Metric]) -> str:
+def _shard_signature(
+    dataloader: Dataloader,
+    extent: tuple[float, float, float, float] | None,
+    metrics: dict[str, Metric],
+) -> str:
     """Stable fingerprint of everything that affects a shard's content.
 
     Used to validate a cached intermediate before trusting it as a resume

@@ -29,7 +29,11 @@ def test_strips_metric_prefix_from_columns():
         coords={"rhi_threshold": [0.9, 1.0]},
     )
     df = to_long_format(ds, "iagos")
-    assert set(df.columns) >= {"observed_pcr_area", "observed_pcr_area_in_forecast_pcr", "rhi_threshold"}
+    assert set(df.columns) >= {
+        "observed_pcr_area",
+        "observed_pcr_area_in_forecast_pcr",
+        "rhi_threshold",
+    }
     assert not any(c.startswith("iagos.") for c in df.columns)
 
 
@@ -49,9 +53,10 @@ def test_drops_rows_with_zero_coverage():
 def test_matches_golden_schema_against_real_data():
     """The adapter's output schema/values must match the actual pre-port
     golden file for the same hour -- not just structurally, but exactly."""
-    forecast_store = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data/metoffice-prefix-buggy"
-    obs_store = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data/_obs_cache/iagos-prefix-buggy"
-    golden_dir = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data/metoffice-iagos-contrailwatch-region"
+    data_dir = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data"
+    forecast_store = f"{data_dir}/metoffice-prefix-buggy"
+    obs_store = f"{data_dir}/_obs_cache/iagos-prefix-buggy"
+    golden_dir = f"{data_dir}/metoffice-iagos-contrailwatch-region"
 
     import os
 
@@ -81,5 +86,8 @@ def test_matches_golden_schema_against_real_data():
         atol=1e-6,
     )
     assert np.allclose(
-        adapted_sorted["observed_pcr_area"], golden_sorted["observed_pcr_area"], rtol=1e-9, atol=1e-6
+        adapted_sorted["observed_pcr_area"],
+        golden_sorted["observed_pcr_area"],
+        rtol=1e-9,
+        atol=1e-6,
     )

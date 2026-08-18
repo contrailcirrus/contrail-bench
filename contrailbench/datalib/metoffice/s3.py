@@ -53,7 +53,8 @@ PRODUCT_PREFIX = "global-deterministic-10km"
 CRUISE_LEVELS_HPA = (300, 275, 250, 225, 200, 175, 150)
 
 #: CONUS bounding box, (lon_min, lon_max, lat_min, lat_max).
-#: Matches ``EXTENT`` as duplicated across ``reports/jay_extension/pipelines/*_contrailwatch_region.py``.
+#: Matches ``EXTENT`` as duplicated across
+#: ``reports/jay_extension/pipelines/*_contrailwatch_region.py``.
 CONUS_EXTENT = (-134, -63, 20, 50)
 
 #: Run cadence (hours) -- Met Office global deterministic runs at 00/06/12/18Z

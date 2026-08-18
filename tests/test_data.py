@@ -2,7 +2,12 @@
 
 import pytest
 
-from contrailbench.data import ADSBDataloader, ContrailWatchDataloader, GRUANDataloader, IAGOSDataloader
+from contrailbench.data import (
+    ADSBDataloader,
+    ContrailWatchDataloader,
+    GRUANDataloader,
+    IAGOSDataloader,
+)
 
 _DATALOADER_CLASSES = [ADSBDataloader, IAGOSDataloader, GRUANDataloader, ContrailWatchDataloader]
 

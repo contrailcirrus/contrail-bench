@@ -49,10 +49,14 @@ class _FakeClient:
 def _patch_s3(monkeypatch):
     monkeypatch.setattr(s3, "filesystem", _FakeClient)
 
-    def fake_open_field(fs, key, parameter, *, run=None, validity=None, lead_hours=None, extent=None):
+    def fake_open_field(
+        fs, key, parameter, *, run=None, validity=None, lead_hours=None, extent=None
+    ):
         return _fake_field(parameter, validity)
 
-    def fake_fetch_field(fs, key, parameter, *, run=None, validity=None, lead_hours=None, extent=None):
+    def fake_fetch_field(
+        fs, key, parameter, *, run=None, validity=None, lead_hours=None, extent=None
+    ):
         return _fake_field(parameter, validity)
 
     monkeypatch.setattr(s3, "open_pressure_level_field", fake_open_field)

@@ -10,6 +10,7 @@ import argparse
 
 import pandas as pd
 
+from contrailbench import pcr
 from contrailbench.data import (
     ADSBDataloader,
     ContrailWatchDataloader,
@@ -17,7 +18,6 @@ from contrailbench.data import (
     IAGOSDataloader,
     PCRStoreDataloader,
 )
-from contrailbench import pcr
 from contrailbench.forecast import Forecast
 from contrailbench.metrics import FlightDistance, HitRate
 from contrailbench.pipelines._common import DATA_DIR, parse_hours, pipeline_options
@@ -33,7 +33,9 @@ METRICS = {
 }
 
 
-def output_dirs(source: str, metric_names: list[str], region: str, lead_hours: int | None = None) -> tuple[str, str]:
+def output_dirs(
+    source: str, metric_names: list[str], region: str, lead_hours: int | None = None
+) -> tuple[str, str]:
     """(outputs, intermediates) directories for an evaluation run.
 
     Parameters
@@ -72,8 +74,7 @@ def main() -> None:
         "--lead-hours",
         type=int,
         default=None,
-        help="Evaluate against a fixed lead's store instead of the "
-        "shortest-available-lead store.",
+        help="Evaluate against a fixed lead's store instead of the shortest-available-lead store.",
     )
     parser.add_argument("--start", type=pd.Timestamp, default=DEFAULT_START)
     parser.add_argument("--end", type=pd.Timestamp, default=DEFAULT_END)

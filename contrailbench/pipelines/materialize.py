@@ -115,7 +115,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    options = pipeline_options(args.runner, f"contrail-bench-materialize-{args.source}-{args.region}")
+    options = pipeline_options(
+        args.runner, f"contrail-bench-materialize-{args.source}-{args.region}"
+    )
     extent = pcr.REGION_EXTENTS[args.region]
     local_dir = store_dir(args.source, args.region, args.lead_hours)
 
@@ -130,7 +132,9 @@ def main() -> None:
         else pcr.limit_times(window_times, args.limit)
     )
     existing = (
-        [f"{local_dir}/{name}" for name in os.listdir(local_dir)] if os.path.isdir(local_dir) else []
+        [f"{local_dir}/{name}" for name in os.listdir(local_dir)]
+        if os.path.isdir(local_dir)
+        else []
     )
     times_to_run = pcr.pending_times(times, pcr.PCR_FLIGHT_LEVELS, existing, local_dir)
     print(

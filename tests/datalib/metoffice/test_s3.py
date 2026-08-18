@@ -173,9 +173,7 @@ def test_select_cruise_subset_crops_to_passed_in_extent():
     )
 
     shanwick_extent = (-30.0, -10.0, 45.0, 61.0)
-    da = s3.select_cruise_subset(
-        ds, "temperature_on_pressure_levels", extent=shanwick_extent
-    )
+    da = s3.select_cruise_subset(ds, "temperature_on_pressure_levels", extent=shanwick_extent)
 
     assert da["longitude"].values.min() >= -30.0
     assert da["longitude"].values.max() <= -10.0
