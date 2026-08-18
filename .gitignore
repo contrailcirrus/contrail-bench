@@ -33,3 +33,5 @@ tests/fixtures/metoffice/.cache/
 
 # local data mirrors
 reports/jay_extension/data
+reports/jay_extension/figures
+reports/v1/data
