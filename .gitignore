@@ -30,3 +30,6 @@ docs/examples/airports
 
 # test fixture cache (downloaded on demand, see tests/datalib/metoffice/test_s3.py)
 tests/fixtures/metoffice/.cache/
+
+# local data mirrors
+reports/jay_extension/data
