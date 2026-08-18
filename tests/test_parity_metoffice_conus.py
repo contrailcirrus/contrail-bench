@@ -36,11 +36,11 @@ from contrailbench.data import IAGOSDataloader, PCRStoreDataloader
 from contrailbench.forecast import Forecast
 from contrailbench.metrics import HitRate
 from contrailbench.pcr import CONUS_EXTENT, PCR_FLIGHT_LEVELS
+from contrailbench.pipelines._common import DATA_DIR
 
-DATA_ROOT = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data"
-FORECAST_STORE = f"{DATA_ROOT}/metoffice-prefix-buggy"
-OBS_STORE = f"{DATA_ROOT}/_obs_cache/iagos-prefix-buggy"
-GOLDEN_DIR = f"{DATA_ROOT}/metoffice-iagos-contrailwatch-region"
+FORECAST_STORE = str(DATA_DIR / "metoffice-prefix-buggy")
+OBS_STORE = str(DATA_DIR / "_obs_cache" / "iagos-prefix-buggy")
+GOLDEN_DIR = str(DATA_DIR / "metoffice-iagos-contrailwatch-region")
 DST_BOUNDARY = datetime.datetime(2024, 10, 27, 1, 0, tzinfo=datetime.UTC)
 
 

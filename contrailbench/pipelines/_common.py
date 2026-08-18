@@ -17,7 +17,7 @@ from apache_beam.options.pipeline_options import PipelineOptions
 DATA_DIR = pathlib.Path(
     os.environ.get(
         "CONTRAILBENCH_DATA_DIR",
-        str(pathlib.Path(__file__).resolve().parents[2] / "reports" / "jay_extension" / "data"),
+        str(pathlib.Path(__file__).resolve().parents[2] / "reports" / "draft_v2" / "data"),
     )
 )
 

@@ -1,6 +1,7 @@
 """Regression tests for the netCDF-to-long-format notebook adapter."""
 
 import datetime
+import os
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ from contrailbench.data import IAGOSDataloader, PCRStoreDataloader
 from contrailbench.forecast import Forecast
 from contrailbench.metrics import HitRate
 from contrailbench.pcr import CONUS_EXTENT, PCR_FLIGHT_LEVELS
+from contrailbench.pipelines._common import DATA_DIR
 from contrailbench.pipelines.adapter import to_long_format
 
 
@@ -53,12 +55,9 @@ def test_drops_rows_with_zero_coverage():
 def test_matches_golden_schema_against_real_data():
     """The adapter's output schema/values must match the actual pre-port
     golden file for the same hour -- not just structurally, but exactly."""
-    data_dir = "/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data"
-    forecast_store = f"{data_dir}/metoffice-prefix-buggy"
-    obs_store = f"{data_dir}/_obs_cache/iagos-prefix-buggy"
-    golden_dir = f"{data_dir}/metoffice-iagos-contrailwatch-region"
-
-    import os
+    forecast_store = str(DATA_DIR / "metoffice-prefix-buggy")
+    obs_store = str(DATA_DIR / "_obs_cache" / "iagos-prefix-buggy")
+    golden_dir = str(DATA_DIR / "metoffice-iagos-contrailwatch-region")
 
     if not all(os.path.isdir(d) for d in (forecast_store, obs_store, golden_dir)):
         pytest.skip("local data mirror not present in this environment")

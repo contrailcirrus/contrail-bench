@@ -32,6 +32,6 @@ docs/examples/airports
 tests/fixtures/metoffice/.cache/
 
 # local data mirrors
-reports/jay_extension/data
-reports/jay_extension/figures
+reports/draft_v2/data
+reports/draft_v2/figures
 reports/v1/data

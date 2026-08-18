@@ -6,6 +6,8 @@ what the pre-port pipelines computed one threshold at a time via
 ``apply_rhi_threshold(rhi, sac, threshold) = (rhi > threshold) & (sac > 0)``.
 """
 
+import os
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -13,6 +15,9 @@ import xarray as xr
 
 from contrailbench import pcr
 from contrailbench.data import PCRStoreDataloader
+from contrailbench.pipelines._common import DATA_DIR
+
+REAL_STORE_PATH = str(DATA_DIR / "metoffice")
 
 
 def _old_apply_rhi_threshold(
@@ -103,9 +108,10 @@ def test_extent_crops_to_requested_bounding_box(synthetic_store):
 
 def test_reads_real_metoffice_store_file():
     """Smoke test against an actual on-disk forecast file, not just synthetic data."""
-    loader = PCRStoreDataloader(
-        path="/home/jg931/contrails_org/contrail-bench/reports/jay_extension/data/metoffice"
-    )
+    if not os.path.isdir(REAL_STORE_PATH):
+        pytest.skip("local data mirror not present in this environment")
+
+    loader = PCRStoreDataloader(path=REAL_STORE_PATH)
     result = loader.data(pd.Timestamp("2024-09-01T00:00:00"), 310, None)
 
     assert "time" not in result.dims
