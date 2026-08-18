@@ -148,6 +148,7 @@ ignore-path = [
 # https://www.pydocstyle.org/en/6.3.0/error_codes.html
 [tool.ruff]
 line-length = 100
+extend-exclude = ["reports"]
 
 [tool.ruff.lint]
 select = [
