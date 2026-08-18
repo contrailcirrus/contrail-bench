@@ -6,6 +6,7 @@ per-source logic left is each `sources.<name>.fetch`; everything else
 """
 
 import argparse
+import datetime
 import os
 import pathlib
 
@@ -51,7 +52,7 @@ def store_dir(source: str, region: str = "conus", lead_hours: int | None = None)
 
 
 def preprocess_forecast(
-    time: pd.Timestamp,
+    time: datetime.datetime,
     flight_levels: list[int],
     source: str,
     *,
