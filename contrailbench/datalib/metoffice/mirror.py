@@ -5,20 +5,18 @@ region writes so a run can be interrupted and resumed without re-fetching comple
 hours. Iterates months oldest-first, since that is the order the rolling S3 archive
 expires data.
 
-Uses a **process** pool, not threads. ``h5py``/HDF5 serializes internally across
-threads within one process regardless of how many are spawned (measured: zero
-speedup from 8 threads); separate processes each get their own HDF5 instance and
-scale close to linearly (measured: ~4x wall-clock speedup from 4 processes).
+Uses a **process** pool, not threads: ``h5py``/HDF5 serializes internally across
+threads within one process, but separate processes each get their own HDF5 instance
+and scale close to linearly.
 
 Run as a script::
 
     python -m contrailbench.datalib.metoffice.mirror \
         --start 2024-09-01T00:00 --end 2024-12-31T23:00 --out-dir data/metoffice
 
-**Default window is September 2024 only**, not the full Sep-Dec window. This is
-a local-machine throughput limitation, not a scope decision: the pre-2026 archive
-files need ~19x more individual chunk reads than current files for the same CONUS
-subset (measured directly), so even with process-level parallelism, one month is a
+**Default window is September 2024 only**, not the full Sep-Dec window -- the
+pre-2026 archive files need far more individual chunk reads than current files for
+the same CONUS subset, so even with process-level parallelism one month is a
 multi-hour run. Pass ``--end 2024-12-31T23:00`` explicitly to cover the rest of the
 window once September has been validated end-to-end.
 """
@@ -296,9 +294,7 @@ def _mirror_target(target: _MirrorTarget, workers: int) -> None:
     """
     manifest = _load_manifest(target.manifest_path)
     pending = [
-        t
-        for t in target.times_to_process
-        if manifest.get(t.isoformat(), {}).get("status") != "ok"
+        t for t in target.times_to_process if manifest.get(t.isoformat(), {}).get("status") != "ok"
     ]
 
     logger.info(
@@ -367,9 +363,7 @@ def _mirror_target(target: _MirrorTarget, workers: int) -> None:
                 t.isoformat(),
             )
 
-    logger.info(
-        "%s: finished -- %d captured, %d failed this run", target.label, completed, failed
-    )
+    logger.info("%s: finished -- %d captured, %d failed this run", target.label, completed, failed)
 
 
 def _resolve_region_extent(region: str, out_dir: pathlib.Path) -> tuple[float, float, float, float]:

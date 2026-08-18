@@ -5,13 +5,11 @@ only the seven cruise pressure levels over a CONUS bounding box via byte-range r
 skipping the ``flag`` variable entirely.
 
 Uses a plain ``boto3`` client wrapped in a minimal seekable file-like object, not
-``fsspec``/``s3fs``. Measured against this bucket, ``s3fs``'s async wrapper layer adds
-~30-80x latency per range request and never parallelizes across threads or processes
-(``fsspec`` caches ``S3FileSystem`` instances process-wide, sharing one background
-event loop). Plain ``boto3`` calls are fast per-request and scale close to linearly
-with concurrency. Because ``h5py``/HDF5 itself serializes internally across threads in
-one process, real concurrency requires separate *processes* (see ``mirror.py``), not
-threads.
+``fsspec``/``s3fs``: against this bucket, ``s3fs``'s async wrapper layer adds
+significant latency per range request and doesn't parallelize across threads or
+processes, whereas plain ``boto3`` calls scale close to linearly with concurrency.
+Real concurrency requires separate *processes* (see ``mirror.py``), not threads,
+since ``h5py``/HDF5 itself serializes internally within one process.
 
 This is a standalone module: it knows nothing about pycontrails. The pycontrails
 datalib (``ukmo.py``) wraps it, structured like ``pycontrails.datalib.dwd.icon``/``ods``.
@@ -24,13 +22,11 @@ Lead selection follows the shortest-available, T+0->T+5 cycling scheme: runs occ
 every 6 hours (00/06/12/18Z), so for any hourly validity time the run is the
 preceding 6-hour boundary and the lead is the hour offset from it.
 
-**Chunk layout varies by archive vintage.** The pre-2026 files have a much
-finer native chunk layout than the current live product -- fetching the same 7-level
-CONUS subset takes ~19x more individual chunk reads for a Sep 2024 file than for a
-2026 file (2364 vs 124, measured directly). This is intrinsic to the file, not fixable
-client-side; it is why per-hour fetch time for the actual mirror window is dominated
-by request *count*, and why the earlier ``s3fs``-vs-``boto3`` byte-count comparison
-(done against a 2026 reference file) does not represent the real window's cost.
+**Chunk layout varies by archive vintage.** The pre-2026 files have a much finer
+native chunk layout than the current live product, so fetching the same 7-level
+CONUS subset takes far more individual chunk reads for an older file than for a
+current one. This is intrinsic to the file, not fixable client-side, and means
+per-hour fetch time for the actual mirror window is dominated by request *count*.
 """
 
 import datetime
@@ -196,9 +192,7 @@ def available_validity_times_at_lead(
     """
     run_hours = run_hours_for_lead(lead_hours)
     candidates = pd.date_range(start, end, freq="1h").to_pydatetime().tolist()
-    return [
-        v for v in candidates if (v - datetime.timedelta(hours=lead_hours)).hour in run_hours
-    ]
+    return [v for v in candidates if (v - datetime.timedelta(hours=lead_hours)).hour in run_hours]
 
 
 def matched_validity_times(
@@ -412,10 +406,7 @@ def select_cruise_subset(
     for level_hpa, level_pa in zip(CRUISE_LEVELS_HPA, target_pa, strict=True):
         matches = np.flatnonzero(np.isclose(pressure_pa, level_pa, atol=1e-3))
         if len(matches) != 1:
-            msg = (
-                f"expected exactly one {level_hpa} hPa level in {key}, "
-                f"found {len(matches)}"
-            )
+            msg = f"expected exactly one {level_hpa} hPa level in {key}, found {len(matches)}"
             raise AssertionError(msg)
         level_indices.append(int(matches[0]))
 

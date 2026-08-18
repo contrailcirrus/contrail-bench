@@ -1,47 +1,29 @@
 """pycontrails datalib wrapping the Met Office mirror.
 
-Structured like ``pycontrails.datalib.dwd.icon``/``ods``. Unlike DWD's
-``ICON`` (which fetches GRIB from a remote server per timestep), there is no remote
-fetch to do here at datalib-usage time: :mod:`contrailbench.datalib.metoffice.mirror`
-has already populated local, monthly Zarr stores. "Download" therefore means
-"confirm the requested hours were really captured" (via the mirror's manifest), not
-"go fetch bytes" -- see :meth:`MetOfficeUM.download_dataset`.
+Structured like ``pycontrails.datalib.dwd.icon``/``ods``, but there is no remote
+fetch at datalib-usage time: :mod:`contrailbench.datalib.metoffice.mirror` has
+already populated local, monthly Zarr stores, so "download" here means confirming
+the requested hours were captured (via the mirror's manifest), not fetching bytes
+-- see :meth:`MetOfficeUM.download_dataset`.
 
 **Humidity convention.** The mirror stores raw, water-referenced, fractional relative
-humidity (``units: 1``, established empirically; not recoverable from file metadata).
-This datalib converts
-it to ``specific_humidity`` via::
+humidity (``units: 1``). This datalib converts it to ``specific_humidity`` via
+``q = RH_w * thermo.q_sat_liquid(T, p)``, which makes pycontrails' own
+``thermo.rhi(q, T, p) = q*p / (epsilon*e_sat_ice(T))`` reduce to the ice-referenced
+RHi conversion (``RH_w * e_sat_liquid(T) / e_sat_ice(T)``) that ISSR/SAC/PCR need,
+without this module reimplementing saturation-vapor-pressure formulas itself.
 
-    q = RH_w * thermo.q_sat_liquid(T, p)
-
-Substituting this ``q`` into pycontrails' own ``thermo.rhi(q, T, p) = q*p /
-(epsilon*e_sat_ice(T))`` algebraically reduces to exactly
-``RH_w * e_sat_liquid(T) / e_sat_ice(T)`` -- the ice-referenced RHi conversion this
-datalib exists to provide. Any downstream ISSR/SAC/PCR call gets that conversion for free without this
-module reimplementing saturation-vapor-pressure formulas itself.
-
-**Deliberately out of scope, not oversights:**
-
-- *Geopotential height*: never mirrored (the mirror only ever fetched
-  ``air_temperature``/``relative_humidity``), and not needed -- pycontrails'
-  ``MetDataset`` derives ``air_pressure``/``altitude`` from the ``level`` (pressure)
-  coordinate itself, and ISSR/SAC/PCR require only ``air_temperature`` +
-  ``specific_humidity``.
-- *Flag-variable masking*: the mirror never fetched the ``flag`` variable (skipped
-  for bandwidth). Separately, the 7 mirrored cruise levels (300-150 hPa,
-  ~9.2-13.5 km) sit far above CONUS terrain (Mount Whitney, ~4.4 km) -- the
-  below-surface-pressure condition the flag records cannot occur in this scope.
-- *Provider "registration"*: pycontrails' "Unknown provider"/"Unknown dataset"
-  ``UserWarning`` (see :mod:`pycontrails.core.met`) comes from three hardcoded tuples
-  in pycontrails core, not an extensible registry, and is unrelated to
-  variable-name/unit validation (that happens locally, per-datalib, via
-  ``metsource.parse_variables`` against :attr:`MetOfficeUM.supported_variables`).
-  This module sets ``provider``/``dataset``/``product`` attrs anyway (useful
-  metadata) without patching pycontrails; :func:`suppress_unregistered_source_warnings`
-  is provided for callers (e.g. the PCR pipeline, when constructing/running an
-  ``ISSR``/``SAC``/``PCR`` model against this data) that want to silence the resulting
-  warning the same way ``pycontrails.models.cocip.Cocip`` documents doing for DWD/GFS
-  sources it doesn't recognize either.
+**Scope.** Geopotential height and the ``flag`` variable are not mirrored, and
+aren't needed: ``MetDataset`` derives ``air_pressure``/``altitude`` from the
+``level`` (pressure) coordinate itself, and the 7 mirrored cruise levels (300-150
+hPa) sit well above CONUS terrain, so the flag's below-surface-pressure condition
+can't occur here. pycontrails' "Unknown provider"/"Unknown dataset" ``UserWarning``
+comes from hardcoded tuples in pycontrails core, unrelated to this module's own
+variable/unit validation (``metsource.parse_variables``); this module sets
+``provider``/``dataset``/``product`` attrs as metadata regardless, and
+:func:`suppress_unregistered_source_warnings` silences the warning for callers
+that construct/run a pycontrails ``Model`` (e.g. ``ISSR``, ``SAC``, ``PCR``)
+against this data.
 """
 
 from __future__ import annotations
@@ -56,12 +38,12 @@ from typing import Any
 
 import numpy as np
 import xarray as xr
-
-from contrailbench.datalib.metoffice import mirror, s3
 from pycontrails.core import met_var
 from pycontrails.core.met import MetDataset, MetVariable
 from pycontrails.datalib._met_utils import metsource
 from pycontrails.physics import thermo
+
+from contrailbench.datalib.metoffice import mirror, s3
 
 #: MetDataset.attrs values set by :meth:`MetOfficeUM.set_metadata`. Not recognized by
 #: pycontrails core (see module docstring) -- cosmetic metadata, not validated.
@@ -135,10 +117,9 @@ class MetOfficeUM(metsource.MetDataSource):
         -- unchanged default behavior. A fixed int
         reads instead from the single whole-window store
         ``{out_dir}/lead{lead_hours:03d}.zarr`` produced by
-        :func:`contrailbench.datalib.metoffice.mirror.mirror_fixed_lead`.
-        ``lead_hours=0`` is a real, distinct fixed lead (mirrored into its own
-        ``lead000.zarr``, not reused from the shortest-lead store) -- every check
-        against this attribute uses ``is not None``, never truthiness.
+        :func:`contrailbench.datalib.metoffice.mirror.mirror_fixed_lead`. See
+        :class:`contrailbench.datalib.metoffice.mirror._MirrorTarget` for why
+        ``lead_hours=0`` is checked via ``is not None`` rather than truthiness.
 
     """
 
