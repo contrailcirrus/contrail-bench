@@ -143,8 +143,6 @@ def main() -> None:
     options = get_pipeline_options(runner="dataflow", id="iagos")
     pcoll = TIMES
 
-    preprocess_iagos(datetime.datetime(2025, 6, 1, 10))
-    
     with beam.Pipeline(options=options) as pipeline:
         (
             pipeline

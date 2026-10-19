@@ -27,3 +27,6 @@ rgi_cython*.pyd
 docs/_build
 docs/api/
 docs/examples/airports
+
+# logs
+*.log

@@ -33,6 +33,9 @@ LATITUDE_BNDS = np.linspace(-80.125, 80.125, 642)
 #: Engine efficiency for SAC calculations
 ENGINE_EFFICIENCY = 0.3
 
+#: GCP path for ADSB evaluation dataset
+GCP_ADSB_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/adsb"
+
 #: GCP path for IAGOS evaluation dataset
 GCP_IAGOS_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/iagos"
 
