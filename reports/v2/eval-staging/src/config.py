@@ -22,13 +22,13 @@ VERTICAL_RESOLUTION = 250.0
 LONGITUDE = np.linspace(-180.0, 179.75, 1440)  # 0.25 degrees
 
 #: Target latitudes
-LATITUDE = np.linspace(-80.0, 80.0, 641)  # 0.25 degrees
+LATITUDE = np.linspace(-90.0, 90.0, 721)  # 0.25 degrees
     
 #: Longitude bounds
 LONGITUDE_BNDS = np.linspace(-180.125, 179.875, 1441)
 
 #: Latitude bounds
-LATITUDE_BNDS = np.linspace(-80.125, 80.125, 642)
+LATITUDE_BNDS = np.linspace(-90.125, 90.125, 722).clip(-90.0, 90.0)
 
 #: Engine efficiency for SAC calculations
 ENGINE_EFFICIENCY = 0.3
@@ -38,6 +38,9 @@ GCP_ADSB_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/ads
 
 #: GCP path for IAGOS evaluation dataset
 GCP_IAGOS_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/iagos"
+
+#: GCP path for GRUAN evaluation dataset
+GCP_GRUAN_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/gruan"
 
 
 def shard_id(time: datetime.datetime, flight_level: int) -> str:
