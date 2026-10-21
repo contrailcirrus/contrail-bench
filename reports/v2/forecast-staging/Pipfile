@@ -1,0 +1,33 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+apache-beam = {extras = ["gcp"], version = "==2.76.0"}
+# Forecast pipelines: ECMWF GRIB (cfgrib, eccodes), the Met Office datalib, GCS and zarr stores.
+# The Met Office datalib is only in this private fork for now, so this needs an SSH key for GitHub.
+pycontrails = {extras = ["ecmwf", "gcp", "ukmo", "zarr"], git = "ssh://git@github.com/JayGreen7/pycontrails.git", ref = "ebc0db7a4000467a7ff7d5e815be0da00f009986"}
+# Pinned to the versions the pipelines were checked against
+numpy = "==2.4.6"
+pandas = "==3.0.6"
+xarray = "==2026.9.0"
+scipy = "==1.18.1"
+pyproj = "*"
+zarr = "==3.4.0"
+pyarrow = "*"
+netcdf4 = "*"
+h5netcdf = "*"
+h5py = "*"
+fsspec = "*"
+gcsfs = "*"
+aiohttp = "*"
+aiolimiter = "*"
+google-cloud-secret-manager = "*"
+google-cloud-storage = "*"
+
+[dev-packages]
+ruff = "*"
+
+[requires]
+python_version = "3.13"
