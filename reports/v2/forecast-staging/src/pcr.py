@@ -184,7 +184,8 @@ def regrid_and_derive(
     xarray.Dataset
         ``rhi``, ``sac`` and ``pcr`` (RHi above 1 where SAC holds) on the benchmark grid with
         a ``flight_level`` dimension. The pressures remain as a ``level`` coordinate along
-        ``flight_level``. Use :func:`split_flight_levels` for single-level files.
+        ``flight_level``. Use :func:`split_flight_levels` for single-level files. Where source data
+        is missing the fields are NaN in the target cells that cover it, and only there.
     """
     regridded = xr.Dataset(
         {
@@ -203,11 +204,12 @@ def regrid_and_derive(
         else None
     )
     rhi, sac_field = _compute_rhi_and_sac(MetDataset(regridded), humidity_scaling)
+    valid = rhi.notnull() & sac_field.notnull()  # where the input was missing, so is `pcr`
     out = xr.Dataset(
         {
             "rhi": rhi.astype("float32"),
             "sac": sac_field.astype("float32"),
-            "pcr": ((rhi > 1.0) & (sac_field > 0)).astype("float32"),
+            "pcr": ((rhi > 1.0) & (sac_field > 0)).astype("float32").where(valid),
         }
     )
     out["rhi"].attrs = {"long_name": "Relative humidity over ice", "units": "1"}

@@ -17,6 +17,10 @@ LATITUDE = np.linspace(-90.0, 90.0, 721)
 LONGITUDE_BNDS = np.linspace(-180.125, 179.875, 1441)
 LATITUDE_BNDS = np.linspace(-90.125, 90.125, 722).clip(-90.0, 90.0)
 
+#: Share of a target cell's source weight that may be missing before the cell is missing; this is
+#: above floating point noise, and far below the weight of any real source cell
+MISSING_TOLERANCE = 1e-9
+
 
 def crop_grid(extent: Extent) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Crop the benchmark grid to ``extent`` = ``(lon_min, lon_max, lat_min, lat_max)``.
@@ -71,6 +75,9 @@ def regrid(field: xr.DataArray, target_extent: Extent) -> xr.DataArray:
     ascending and uniformly spaced. Source cell edges are rebuilt from that spacing (centre +/-
     half spacing), which is exact for the uniform lat/lon grids of every source used here. Other
     dimensions (``level``, ``time``) are kept.
+
+    Missing (NaN) source cells make only the target cells they overlap missing; the rest of the
+    field is regridded as usual. A plain weighted sum would turn one NaN into a NaN everywhere.
     """
     source_longitude = field["longitude"].values
     source_latitude = field["latitude"].values
@@ -87,6 +94,20 @@ def regrid(field: xr.DataArray, target_extent: Extent) -> xr.DataArray:
         dims=("_target_latitude", "latitude"),
         coords={"_target_latitude": target_lat, "latitude": source_latitude},
     )
-    regridded = xr.dot(field, lon_weights, dim="longitude")
-    regridded = xr.dot(regridded, lat_weights, dim="latitude")
+
+    def apply_weights(x: xr.DataArray) -> xr.DataArray:
+        return xr.dot(xr.dot(x, lon_weights, dim="longitude"), lat_weights, dim="latitude")
+
+    missing = field.isnull()
+    if missing.any():
+        # Regrid with zeros in place of the missing cells, and drop the target cells that overlap
+        # any of them (their share of missing weight is above the tolerance). Only the slices
+        # (levels, times) that have missing cells need that overlap worked out.
+        regridded = apply_weights(field.fillna(0.0))
+        has_missing = missing.any(["longitude", "latitude"])
+        share = apply_weights(missing.astype(float).where(has_missing, drop=True))
+        affected = (share > MISSING_TOLERANCE).reindex_like(regridded, fill_value=False)
+        regridded = regridded.where(~affected)
+    else:
+        regridded = apply_weights(field)
     return regridded.rename({"_target_longitude": "longitude", "_target_latitude": "latitude"})
