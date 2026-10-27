@@ -42,6 +42,9 @@ GCP_IAGOS_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/ia
 #: GCP path for GRUAN evaluation dataset
 GCP_GRUAN_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/gruan"
 
+#: GCP path for ContrailWatch evaluations dataset
+GCP_CONTRAILWATCH_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/contrailwatch"
+
 
 def shard_id(time: datetime.datetime, flight_level: int) -> str:
     """Compute name of data shard. Assumes timezone-naive datetimes are UTC."""
