@@ -42,8 +42,11 @@ GCP_IAGOS_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/ia
 #: GCP path for GRUAN evaluation dataset
 GCP_GRUAN_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/gruan"
 
-#: GCP path for ContrailWatch evaluations dataset
+#: GCP path for ContrailWatch evaluation dataset
 GCP_CONTRAILWATCH_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/contrailwatch"
+
+#: GCP path for Imperial attributions evaluation dataset
+GCP_IMPERIAL_ATT_SINK = "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/imperial-attributions"
 
 
 def shard_id(time: datetime.datetime, flight_level: int) -> str:
