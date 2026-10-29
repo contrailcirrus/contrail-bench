@@ -118,11 +118,16 @@ def compute_forecast(
         raw = f"{tmp}/hres.grib"
         name = fetch_grib(init, valid_time, raw)
 
-        # An unfiltered open fails because the scalar hybrid coordinate of ``lnsp`` (log surface
-        # pressure) collides with the 28-level one, so the file is opened once per key. cfgrib
-        # logs that collision as an error while it builds the "hybrid" group, then recovers by
-        # dropping ``lnsp``, which the second open reads. The logged error is expected.
-        ds_ml = xr.open_dataset(raw, engine="cfgrib", filter_by_keys={"typeOfLevel": "hybrid"})
+        # The scalar hybrid coordinate of ``lnsp`` (log surface pressure) collides with the 28-level
+        # one, so the file is opened once per variable. Opening every hybrid-level field together
+        # does not work: cfgrib drops whichever of the two hybrid coordinates it meets second, so
+        # a file that lists ``lnsp`` first opens with ``lnsp`` alone and no model levels.
+        ds_ml = xr.merge(
+            xr.open_dataset(
+                raw, engine="cfgrib", filter_by_keys={"typeOfLevel": "hybrid", "shortName": key}
+            )
+            for key in ("t", "q")
+        )
         ds_lnsp = xr.open_dataset(raw, engine="cfgrib", filter_by_keys={"shortName": "lnsp"})
         check_grib_time(ds_ml, valid_time, name)
         ds_ml = ds_ml.rename(hybrid="model_level")
