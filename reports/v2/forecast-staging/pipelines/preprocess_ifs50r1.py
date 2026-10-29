@@ -34,7 +34,6 @@ LOGGER = logging.getLogger(__name__)
 
 #: Output directory name under ``forecasts/``, and the one initialisation it holds
 SOURCE = "ecmwf-ifs-hres-50r1"
-RUN = "00Z"
 
 #: One zarr store per initialisation day; ``{day}`` is ``YYYYmmdd``
 TEMPLATE = "gs://contrails-301217-forecast-research-archive/ifs50r1/00h/{day}.zarr"
@@ -254,7 +253,7 @@ def main() -> None:
     run_job = functools.partial(
         run_days, template=TEMPLATE, allow_incomplete=args.allow_incomplete_window
     )
-    job = cli.shard_job_for(args, SOURCE, run=RUN)
+    job = cli.shard_job_for(args, SOURCE)
     cli.run(args, job, produce, "ifs50r1", run_job=run_job)
 
 

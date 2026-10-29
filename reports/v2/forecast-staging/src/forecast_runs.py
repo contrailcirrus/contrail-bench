@@ -1,48 +1,71 @@
-"""Which forecast run serves a valid time, and how to record it in a shard.
+"""Which forecast serves a valid time at a given lead, and how to record it in a shard.
 
-A forecast run is an initialisation at 00, 06, 12 or 18 UTC. A pipeline for run ``R`` writes one
-shard per valid hour, each from the newest ``R`` initialisation at or before that hour, so every
-run covers every hour with leads of 0 to 23 hours. Each shard records its own initialisation, and
-the lead is worked out from that afterwards.
+Forecasts are initialised at 00, 06, 12 and 18 UTC, so a valid time has forecasts at leads
+``shortest_lead``, ``shortest_lead + 6``, ``shortest_lead + 12`` and so on, where the shortest lead
+is 1 to 6 hours (lead 0, the analysis step, is not used). A pipeline writes one shard per valid
+hour, flight level and lead, each from the initialisation ``lead`` hours before the valid time.
+Each shard records its own initialisation.
 """
 
 import datetime
-import re
+from collections.abc import Iterable
 
 import numpy as np
 import xarray as xr
 
-#: Initialisation times a run can have
-RUNS = ("00Z", "06Z", "12Z", "18Z")
+from src import config
+
+#: Hours between initialisations
+CYCLE_HOURS = 6
 
 
-def parse_run(value: str) -> str:
-    """Normalise a run given as ``00``, ``6``, ``00z`` or ``06Z`` to the :data:`RUNS` form.
+def parse_offsets(value: str) -> tuple[int, ...]:
+    """Lead offsets from ``"all"`` or text such as ``"0,12,24,36"``.
+
+    ``"all"`` is :data:`config.LEAD_OFFSETS`.
 
     Raises
     ------
     ValueError
-        If it is not one of the four runs.
+        If an offset is not a non-negative multiple of :data:`CYCLE_HOURS`.
     """
-    match = re.fullmatch(r"(\d{1,2})[zZ]?", value.strip())
-    if match:
-        run = f"{int(match.group(1)):02d}Z"
-        if run in RUNS:
-            return run
-    msg = f"run must be one of {RUNS}, not {value!r}"
-    raise ValueError(msg)
+    if value.strip().lower() == "all":
+        return config.LEAD_OFFSETS
+    offsets = tuple(sorted({int(part) for part in value.split(",")}))
+    if not offsets or any(o < 0 or o % CYCLE_HOURS for o in offsets):
+        msg = f"offsets must be non-negative multiples of {CYCLE_HOURS}: {value!r}"
+        raise ValueError(msg)
+    return offsets
 
 
-def base_run(valid_time: datetime.datetime, run: str) -> datetime.datetime:
-    """The newest ``run`` initialisation at or before ``valid_time``.
+def shortest_lead(valid_time: datetime.datetime) -> int:
+    """The shortest lead in hours (1 to 6) of any forecast for ``valid_time``.
 
-    ``run`` is in the form :func:`parse_run` returns, such as ``"06Z"``. For example the 06Z run
-    serves 03:00 on 5 November from 06Z on 4 November (lead 21 h), and 07:00 on 5 November from
-    06Z on 5 November (lead 1 h).
+    For example 06:00 and 00:00 are served at lead 6 by the 00Z and 18Z forecasts, and 07:00 at
+    lead 1 by the 06Z forecast.
     """
-    hour = int(run[:2])
-    day = valid_time.replace(hour=hour, minute=0, second=0, microsecond=0)
-    return day if day <= valid_time else day - datetime.timedelta(days=1)
+    return (valid_time.hour - 1) % CYCLE_HOURS + 1
+
+
+def leads(valid_time: datetime.datetime, offsets: Iterable[int]) -> list[int]:
+    """The leads in hours for ``valid_time``: its shortest lead plus each offset."""
+    first = shortest_lead(valid_time)
+    return [first + offset for offset in offsets]
+
+
+def init_for(valid_time: datetime.datetime, lead: int) -> datetime.datetime:
+    """The initialisation ``lead`` hours before ``valid_time``.
+
+    Raises
+    ------
+    ValueError
+        If that is not a 00, 06, 12 or 18 UTC initialisation.
+    """
+    init = valid_time - datetime.timedelta(hours=lead)
+    if init.hour % CYCLE_HOURS or init.minute or init.second or init.microsecond:
+        msg = f"no forecast is initialised at {init}, {lead} h before {valid_time}"
+        raise ValueError(msg)
+    return init
 
 
 def record_init(

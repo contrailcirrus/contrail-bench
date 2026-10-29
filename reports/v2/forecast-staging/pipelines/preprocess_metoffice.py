@@ -1,10 +1,11 @@
 """Preprocess Met Office Unified Model (UM) forecasts into persistent contrail region (PCR) fields.
 
 Reads the global deterministic 10 km UM forecasts from the public Met Office S3 archive through
-pycontrails' ``UM10`` datalib. A job for ``--run R`` writes one netCDF shard per valid hour and
-flight level for the whole period, each from the newest ``R`` initialisation at or before that
-hour (see ``src/forecast_runs.py``). The shard records that initialisation, so lead time is
-worked out afterwards.
+pycontrails' ``UM10`` datalib. Each valid hour is written at every lead given by
+``--lead-offsets`` (its shortest lead of 1 to 6 hours plus each offset; see
+``src/forecast_runs.py``) and flight level, from the initialisation that many hours earlier, to
+``{epoch}_{flight_level}/{lead}.nc``. The shard records that initialisation. Leads must be at most
+54 hours, the archive's hourly period.
 
 The archive serves relative humidity on pressure levels, and the datalib derives specific humidity
 from it. The pipeline reads the nine levels from 350 to 150 hPa (25 hPa apart), which bracket
@@ -23,7 +24,7 @@ temporary cache that is removed afterwards, so a worker's disk does not fill up.
 import datetime
 import functools
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 import numpy as np
 import xarray as xr
@@ -82,29 +83,37 @@ def compute_forecast(
 
 
 def preprocess_metoffice(
-    valid_time: datetime.datetime, flight_levels: Sequence[int], *, run: str, extent: Extent
-) -> dict[int, xr.Dataset]:
-    """One shard per flight level for one valid time, from the ``run`` initialisation."""
-    init = forecast_runs.base_run(valid_time, run)
-    batched = compute_forecast(valid_time, init, flight_levels, extent)
-    return {
-        fl: forecast_runs.record_init(shard, init, valid_time)
-        for fl, shard in pcr.split_flight_levels(batched, flight_levels).items()
-    }
+    valid_time: datetime.datetime,
+    flight_levels: Sequence[int],
+    *,
+    lead_offsets: Sequence[int],
+    extent: Extent,
+) -> Iterator[tuple[tuple[int, int], xr.Dataset]]:
+    """The shard of each flight level and lead for one valid time, one lead at a time."""
+    for lead in forecast_runs.leads(valid_time, lead_offsets):
+        init = forecast_runs.init_for(valid_time, lead)
+        batched = compute_forecast(valid_time, init, flight_levels, extent)
+        for fl, shard in pcr.split_flight_levels(batched, flight_levels).items():
+            yield (fl, lead), forecast_runs.record_init(shard, init, valid_time)
 
 
 def main() -> None:
     """Program entrypoint."""
     parser = cli.shard_parser(__doc__)
-    parser.add_argument("--run", type=forecast_runs.parse_run, required=True, help="00Z, 06Z, ...")
+    parser.add_argument(
+        "--lead-offsets",
+        type=forecast_runs.parse_offsets,
+        default=config.LEAD_OFFSETS,
+        help="hours added to each valid time's shortest lead, such as 0,12,24,36 (default: all)",
+    )
     parser.add_argument("--harness-threads", type=int, help="threads per Dataflow worker")
     args = parser.parse_args()
 
     produce = functools.partial(
-        preprocess_metoffice, run=args.run, extent=config.REGIONS[args.region]
+        preprocess_metoffice, lead_offsets=args.lead_offsets, extent=config.REGIONS[args.region]
     )
-    job = cli.shard_job_for(args, SOURCE, run=args.run)
-    cli.run(args, job, produce, f"metoffice-{args.run}")
+    job = cli.shard_job_for(args, SOURCE, lead_offsets=args.lead_offsets)
+    cli.run(args, job, produce, "metoffice")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,11 @@ FLIGHT_LEVELS = tuple(range(270, 450, 10))
 #: Engine efficiency for the Schmidt-Appleman criterion
 ENGINE_EFFICIENCY = 0.3
 
+#: Lead offsets (hours) staged by the forecast pipelines: each valid time gets its shortest lead
+#: (1 to 6 hours) plus each of these. They stop at 48 so that the longest lead, 54 hours, is within
+#: the Met Office archive's hourly period.
+LEAD_OFFSETS = tuple(range(0, 49, 6))
+
 #: Default period (valid times, UTC, inclusive), the same as ``eval-staging``; override with
 #: ``--start`` and ``--end``
 DEFAULT_START = "2025-01-01 00:00"
@@ -30,15 +35,12 @@ PROJECT = "contrails-301217"
 OUTPUT_ROOT = "gs://contrails-301217-contrail-bench/v2"
 
 
-def output_dir(source: str, region: str, run: str | None = None, root: str | None = None) -> str:
-    """Directory a pipeline writes to: ``<root>/forecasts/<source>[/<run>]/<region>``.
+def output_dir(source: str, region: str, root: str | None = None) -> str:
+    """Directory a pipeline writes to: ``<root>/forecasts/<source>/<region>``.
 
-    For example ``forecasts/ecmwf-ifs-hres-49r1/00z/global``. Each file in it is named
-    ``{epoch}_{flight_level}.nc``, where ``epoch`` is the valid time in Unix seconds. ``root``
-    replaces :data:`OUTPUT_ROOT`, for local runs.
+    For example ``forecasts/ecmwf-ifs-hres-49r1/global``. A source with leads has one directory
+    per valid time and flight level, ``{epoch}_{flight_level}/{lead}.nc``, with ``epoch`` the valid
+    time in Unix seconds and ``lead`` in hours; any other has ``{epoch}_{flight_level}.nc``.
+    ``root`` replaces :data:`OUTPUT_ROOT`, for local runs.
     """
-    parts = [(root or OUTPUT_ROOT).rstrip("/"), "forecasts", source]
-    if run:
-        parts.append(run.lower())
-    parts.append(region)
-    return "/".join(parts)
+    return "/".join([(root or OUTPUT_ROOT).rstrip("/"), "forecasts", source, region])

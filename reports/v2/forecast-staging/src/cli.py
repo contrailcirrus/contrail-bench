@@ -47,11 +47,19 @@ def shard_job_for(
     args: argparse.Namespace,
     source: str,
     *,
-    run: str | None = None,
+    lead_offsets: tuple[int, ...] | None = None,
 ) -> shard_job.ShardJob:
-    """The job writing ``source``'s files, in the directory :func:`config.output_dir` gives."""
-    directory = config.output_dir(source, args.region, run=run, root=args.root)
-    return shard_job.ShardJob(directory, config.FLIGHT_LEVELS, skip_failures=args.skip_failures)
+    """The job writing ``source``'s files, in the directory :func:`config.output_dir` gives.
+
+    ``lead_offsets`` is for a source with leads: see :attr:`shard_job.ShardJob.lead_offsets`.
+    """
+    directory = config.output_dir(source, args.region, root=args.root)
+    return shard_job.ShardJob(
+        directory,
+        config.FLIGHT_LEVELS,
+        skip_failures=args.skip_failures,
+        lead_offsets=lead_offsets,
+    )
 
 
 def run(
@@ -66,7 +74,7 @@ def run(
     Parameters
     ----------
     name : str
-        Short name for the Dataflow job, such as ``hres-00z``.
+        Short name for the Dataflow job, such as ``hres``.
 
     run_job : callable
         Runs the job, called as ``run_job(job, produce, times, options, force=...)`` and returning

@@ -66,7 +66,9 @@ def open_zarr(path: str) -> xr.Dataset:
 
 
 def list_names(path: str) -> list[str]:
-    """Names of the files directly under a local directory or ``gs://`` prefix.
+    """Names of the files under a local directory or ``gs://`` prefix, including in subdirectories.
+
+    A name is relative to ``path``, with ``/`` between directories.
 
     Returns an empty list if the directory does not exist or the prefix matches nothing.
     """
@@ -75,7 +77,11 @@ def list_names(path: str) -> list[str]:
         if prefix and not prefix.endswith("/"):
             prefix = f"{prefix}/"
         return [blob.name[len(prefix) :] for blob in gcs_client().list_blobs(bucket, prefix=prefix)]
-    return os.listdir(path) if os.path.isdir(path) else []
+    return [
+        os.path.relpath(os.path.join(directory, name), path).replace(os.sep, "/")
+        for directory, _, names in os.walk(path)
+        for name in names
+    ]
 
 
 def write_netcdf_atomic(ds: xr.Dataset, path: str) -> None:
