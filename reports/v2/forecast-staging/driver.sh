@@ -16,9 +16,8 @@ PERIOD=(--start "$START" --end "$END")
 # pipenv run python -m pipelines.preprocess_contrails_org --region global "${PERIOD[@]}" --runner=dataflow
 # pipenv run python -m pipelines.preprocess_google --region global "${PERIOD[@]}"   # runs locally
 
-# --- Forecasts from model data. Each valid hour is written at every lead: its shortest lead (1 to 6
-# hours) plus each of --lead-offsets (default: 0 to 48 in steps of 6, so leads up to 54 hours).
-# Pass --lead-offsets 0,12,24,36 for only the shortest lead and ones 12, 24 and 36 hours longer.
+# --- Forecasts from model data. Each valid hour is written at the forecast no shorter than 0, 12, 24
+# and 36 hours: its shortest lead (0 to 5 hours) plus each of --lead-offsets (default 0,12,24,36).
 # Try one day first.
 # pipenv run python -m pipelines.preprocess_hres --region global "${PERIOD[@]}" --runner=dataflow
 # pipenv run python -m pipelines.preprocess_metoffice --region global "${PERIOD[@]}" --runner=dataflow

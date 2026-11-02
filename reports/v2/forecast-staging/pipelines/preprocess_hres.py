@@ -3,7 +3,7 @@
 Reads the raw ECMWF dissemination GRIB files (model levels) from the delivery bucket, one per
 valid time, and interpolates temperature and humidity onto each flight level's pressure with
 pycontrails' ``ml_to_pl``. Each valid hour is written at every lead given by ``--lead-offsets``
-(its shortest lead of 1 to 6 hours plus each offset; see ``src/forecast_runs.py``), from the
+(its shortest lead of 0 to 5 hours plus each offset; see ``src/forecast_runs.py``), from the
 initialisation that many hours earlier, to ``{epoch}_{flight_level}/{lead}.nc``. That
 initialisation's file must exist: there is no fallback to another.
 
@@ -97,7 +97,7 @@ def compute_forecast(
     Returns
     -------
     xr.Dataset
-        ``rhi``, ``sac`` and ``pcr`` on the benchmark grid with a ``flight_level`` dimension
+        ``rhi`` and ``sac`` on the benchmark grid with a ``flight_level`` dimension
     """
     pressures = [pcr.target_pressure_hpa(fl) for fl in flight_levels]
 
@@ -172,7 +172,7 @@ def main() -> None:
         "--lead-offsets",
         type=forecast_runs.parse_offsets,
         default=config.LEAD_OFFSETS,
-        help="hours added to each valid time's shortest lead, such as 0,12,24,36 (default: all)",
+        help="hours added to each valid time's shortest lead, such as 0,12,24,36 (the default)",
     )
     parser.add_argument(
         "--harness-threads", type=int, default=2, help="threads per Dataflow worker"

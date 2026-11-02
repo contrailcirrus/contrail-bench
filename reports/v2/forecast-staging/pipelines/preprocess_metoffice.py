@@ -2,7 +2,7 @@
 
 Reads the global deterministic 10 km UM forecasts from the public Met Office S3 archive through
 pycontrails' ``UM10`` datalib. Each valid hour is written at every lead given by
-``--lead-offsets`` (its shortest lead of 1 to 6 hours plus each offset; see
+``--lead-offsets`` (its shortest lead of 0 to 5 hours plus each offset; see
 ``src/forecast_runs.py``) and flight level, from the initialisation that many hours earlier, to
 ``{epoch}_{flight_level}/{lead}.nc``. The shard records that initialisation. Leads must be at most
 54 hours, the archive's hourly period.
@@ -11,7 +11,7 @@ The archive serves relative humidity on pressure levels, and the datalib derives
 from it. The pipeline reads the nine levels from 350 to 150 hPa (25 hPa apart), which bracket
 flight levels 270 to 440, so temperature and humidity are interpolated (log-linear in pressure)
 onto each flight level's pressure, cropped to the region, regridded onto the 0.25 degree benchmark
-grid, and ``rhi``, ``sac`` and ``pcr`` derived there. No humidity correction is applied.
+grid, and ``rhi`` and ``sac`` derived there. No humidity correction is applied.
 
 The fields are cropped to the region plus ``CROP_PAD_DEGREES`` before regridding, so the edge cells
 of the benchmark grid average over every source cell they overlap. Cropping exactly to the region
@@ -58,7 +58,7 @@ def compute_forecast(
     Returns
     -------
     xr.Dataset
-        ``rhi``, ``sac`` and ``pcr`` on the benchmark grid with a ``flight_level`` dimension
+        ``rhi`` and ``sac`` on the benchmark grid with a ``flight_level`` dimension
     """
     pressures = [pcr.target_pressure_hpa(fl) for fl in flight_levels]
     pcr.bracketing_level_indices(np.array(UM_LEVELS_HPA), pressures)  # must cover them
@@ -104,7 +104,7 @@ def main() -> None:
         "--lead-offsets",
         type=forecast_runs.parse_offsets,
         default=config.LEAD_OFFSETS,
-        help="hours added to each valid time's shortest lead, such as 0,12,24,36 (default: all)",
+        help="hours added to each valid time's shortest lead, such as 0,12,24,36 (the default)",
     )
     parser.add_argument("--harness-threads", type=int, help="threads per Dataflow worker")
     args = parser.parse_args()

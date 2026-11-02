@@ -2,9 +2,10 @@
 
 Forecasts are initialised at 00, 06, 12 and 18 UTC, so a valid time has forecasts at leads
 ``shortest_lead``, ``shortest_lead + 6``, ``shortest_lead + 12`` and so on, where the shortest lead
-is 1 to 6 hours (lead 0, the analysis step, is not used). A pipeline writes one shard per valid
-hour, flight level and lead, each from the initialisation ``lead`` hours before the valid time.
-Each shard records its own initialisation.
+is 0 to 5 hours (0 when the valid time is an initialisation time). The forecast "no shorter than"
+``L`` hours is the one at lead ``L`` to ``L + 5``, which is ``shortest_lead + L`` for a multiple of
+6. A pipeline writes one shard per valid hour, flight level and lead, each from the initialisation
+``lead`` hours before the valid time. Each shard records its own initialisation.
 """
 
 import datetime
@@ -13,24 +14,18 @@ from collections.abc import Iterable
 import numpy as np
 import xarray as xr
 
-from src import config
-
 #: Hours between initialisations
 CYCLE_HOURS = 6
 
 
 def parse_offsets(value: str) -> tuple[int, ...]:
-    """Lead offsets from ``"all"`` or text such as ``"0,12,24,36"``.
-
-    ``"all"`` is :data:`config.LEAD_OFFSETS`.
+    """Lead offsets from text such as ``"0,12,24,36"``.
 
     Raises
     ------
     ValueError
         If an offset is not a non-negative multiple of :data:`CYCLE_HOURS`.
     """
-    if value.strip().lower() == "all":
-        return config.LEAD_OFFSETS
     offsets = tuple(sorted({int(part) for part in value.split(",")}))
     if not offsets or any(o < 0 or o % CYCLE_HOURS for o in offsets):
         msg = f"offsets must be non-negative multiples of {CYCLE_HOURS}: {value!r}"
@@ -39,12 +34,12 @@ def parse_offsets(value: str) -> tuple[int, ...]:
 
 
 def shortest_lead(valid_time: datetime.datetime) -> int:
-    """The shortest lead in hours (1 to 6) of any forecast for ``valid_time``.
+    """The shortest lead in hours (0 to 5) of any forecast for ``valid_time``.
 
-    For example 06:00 and 00:00 are served at lead 6 by the 00Z and 18Z forecasts, and 07:00 at
+    For example 06:00 and 00:00 are served at lead 0 by the 06Z and 00Z forecasts, and 07:00 at
     lead 1 by the 06Z forecast.
     """
-    return (valid_time.hour - 1) % CYCLE_HOURS + 1
+    return valid_time.hour % CYCLE_HOURS
 
 
 def leads(valid_time: datetime.datetime, offsets: Iterable[int]) -> list[int]:

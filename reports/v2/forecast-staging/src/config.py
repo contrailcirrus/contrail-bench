@@ -9,9 +9,8 @@ FLIGHT_LEVELS = tuple(range(270, 450, 10))
 ENGINE_EFFICIENCY = 0.3
 
 #: Lead offsets (hours) staged by the forecast pipelines: each valid time gets its shortest lead
-#: (1 to 6 hours) plus each of these. They stop at 48 so that the longest lead, 54 hours, is within
-#: the Met Office archive's hourly period.
-LEAD_OFFSETS = tuple(range(0, 49, 6))
+#: (0 to 5 hours) plus each of these, so the forecast no shorter than 0, 12, 24 and 36 hours.
+LEAD_OFFSETS = (0, 12, 24, 36)
 
 #: Default period (valid times, UTC, inclusive), the same as ``eval-staging``; override with
 #: ``--start`` and ``--end``

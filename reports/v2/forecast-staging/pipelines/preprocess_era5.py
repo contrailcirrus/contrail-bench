@@ -2,7 +2,7 @@
 
 Reads the daily ERA5 zarr stores (``t`` and ``q``: ERA5 model-level data interpolated to fixed
 pressure levels, 134 to 416 hPa), interpolates onto each flight level's pressure, regrids onto the
-0.25 degree benchmark grid, and derives ``rhi``, ``sac`` and ``pcr`` there (see
+0.25 degree benchmark grid, and derives ``rhi`` and ``sac`` there (see
 ``src/pcr.py``). Writes one netCDF file per valid time and flight level.
 
 ERA5 gets a humidity correction (pycontrails' latitude-dependent extension of the Teoh et al.
@@ -34,7 +34,7 @@ TEMPLATE = "gs://contrails-301217-ecmwf-era5-zarr-v2/{day}_pl.zarr"
 def compute_forecast(
     time: datetime.datetime, flight_levels: Sequence[int], extent: Extent, template: str
 ) -> xr.Dataset:
-    """PCR fields (``rhi``, ``sac``, ``pcr``) for one time and every flight level, from one read.
+    """PCR fields (``rhi``, ``sac``) for one time and every flight level, from one read.
 
     The stores have fixed pressure levels, so temperature and humidity are interpolated onto every
     flight level's pressure in one vectorized call, regridded onto the benchmark grid, and RHi and

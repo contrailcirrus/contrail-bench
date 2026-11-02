@@ -89,7 +89,7 @@ def compute_forecast_day(
     Returns
     -------
     xr.Dataset
-        ``rhi``, ``sac`` and ``pcr`` with ``time`` and ``flight_level`` dimensions
+        ``rhi`` and ``sac`` with ``time`` and ``flight_level`` dimensions
 
     Raises
     ------

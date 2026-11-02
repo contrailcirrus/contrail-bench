@@ -12,8 +12,11 @@ the weather data and not the derivation. The order of operations is fixed:
    outcome would give a fractional value with no principled cutoff, whereas averaging the
    continuous fields first keeps ``sac`` genuinely binary.
 
-No threshold is applied beyond ``pcr`` (RHi above 1): ``sac`` does not depend on one and ``rhi`` is
-continuous, so downstream code can flag ``(rhi > threshold) & sac`` for any threshold.
+No threshold is applied: ``sac`` does not depend on one and ``rhi`` is continuous, so downstream
+code derives the persistent contrail region as ``(rhi > threshold) & sac`` for any threshold.
+
+``sac`` is stored as an 8-bit integer (0, 1, or 255 where missing, which xarray reads back as NaN),
+and ``rhi`` as a 32-bit float.
 """
 
 import warnings
@@ -182,8 +185,7 @@ def regrid_and_derive(
     Returns
     -------
     xarray.Dataset
-        ``rhi``, ``sac`` and ``pcr`` (RHi above 1 where SAC holds) on the benchmark grid with
-        a ``flight_level`` dimension. The pressures remain as a ``level`` coordinate along
+        ``rhi`` and ``sac`` on the benchmark grid with a ``flight_level`` dimension. The pressures remain as a ``level`` coordinate along
         ``flight_level``. Use :func:`split_flight_levels` for single-level files. Where source data
         is missing the fields are NaN in the target cells that cover it, and only there.
     """
@@ -204,20 +206,11 @@ def regrid_and_derive(
         else None
     )
     rhi, sac_field = _compute_rhi_and_sac(MetDataset(regridded), humidity_scaling)
-    valid = rhi.notnull() & sac_field.notnull()  # where the input was missing, so is `pcr`
-    out = xr.Dataset(
-        {
-            "rhi": rhi.astype("float32"),
-            "sac": sac_field.astype("float32"),
-            "pcr": ((rhi > 1.0) & (sac_field > 0)).astype("float32").where(valid),
-        }
-    )
+    out = xr.Dataset({"rhi": rhi.astype("float32"), "sac": sac_field.astype("float32")})
     out["rhi"].attrs = {"long_name": "Relative humidity over ice", "units": "1"}
     out["sac"].attrs = {"long_name": "Schmidt-Appleman criterion satisfied flag", "units": "1"}
-    out["pcr"].attrs = {
-        "long_name": "Persistent contrail region flag (rhi_threshold=1.0 default)",
-        "units": "1",
-    }
+    # Written as 8-bit: the flag is 0 or 1, and NaN (missing input) becomes the fill value
+    out["sac"].encoding = {"dtype": "uint8", "_FillValue": 255}
 
     pressures = [target_pressure_hpa(fl) for fl in flight_levels]
     out = out.sel(level=pressures).rename(level="flight_level")
