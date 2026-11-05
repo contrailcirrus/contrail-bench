@@ -21,6 +21,7 @@ PERIOD=(--start "$START" --end "$END")
 # Try one day first.
 # pipenv run python -m pipelines.preprocess_hres --region global "${PERIOD[@]}" --runner=dataflow
 # pipenv run python -m pipelines.preprocess_metoffice --region global "${PERIOD[@]}" --runner=dataflow
+# pipenv run python -m pipelines.preprocess_gfs --region global "${PERIOD[@]}" --runner=dataflow
 # pipenv run python -m pipelines.preprocess_ifs50r1 --region global "${PERIOD[@]}" --runner=dataflow   # 00Z only
 
 # --- ERA5 reanalysis
