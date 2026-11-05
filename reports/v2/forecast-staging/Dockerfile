@@ -9,16 +9,12 @@ FROM apache/beam_python${PYTHON_VERSION}_sdk:${BEAM_SDK_VERSION} AS beam_sdk
 
 FROM python:${PYTHON_VERSION} AS builder
 
-# pycontrails comes from a private fork (see Pipfile), which needs an SSH key at build time
-RUN mkdir -p /root/.ssh
-RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
-
 ENV PIP_ROOT_USER_ACTION=ignore
 RUN pip install -U pip
 RUN pip install pipenv
 RUN mkdir -p /tmp/contrail-bench
 COPY Pipfile Pipfile.lock /tmp/contrail-bench/
-RUN --mount=type=ssh,id=github_ssh_key PIPENV_PIPFILE=/tmp/contrail-bench/Pipfile pipenv install --deploy --system
+RUN PIPENV_PIPFILE=/tmp/contrail-bench/Pipfile pipenv install --deploy --system
 RUN rm -rf /tmp/contrail-bench
 
 FROM python:${PYTHON_VERSION}-slim AS runtime

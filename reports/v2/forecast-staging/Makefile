@@ -1,6 +1,5 @@
 SHELL := /bin/bash
 
-GITHUB_SSH_KEY = ${HOME}/.ssh/id_ed25519_gh
 GOOGLE_APPLICATION_CREDENTIALS = ${HOME}/.config/gcloud/application_default_credentials.json
 IMAGE = v2-forecast-staging
 ARTIFACT_REPO = us-east1-docker.pkg.dev/contrails-301217/contrail-bench
@@ -33,10 +32,10 @@ format:
 #===============
 
 docker-build:
-	docker build --ssh github_ssh_key=$(GITHUB_SSH_KEY) -t $(IMAGE) .
+	docker build -t $(IMAGE) .
 
 docker-rebuild:
-	docker build --no-cache --ssh github_ssh_key=$(GITHUB_SSH_KEY) -t $(IMAGE) .
+	docker build --no-cache -t $(IMAGE) .
 
 docker-interactive: docker-build
 	docker run -it --rm \
