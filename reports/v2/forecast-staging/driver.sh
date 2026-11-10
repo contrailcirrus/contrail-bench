@@ -12,13 +12,13 @@ START="2025-01-01 00:00"
 END="2025-12-31 23:00"
 PERIOD=(--start "$START" --end "$END")
 
-# --- Forecasts from products (the API picks the run; no leads)
-# pipenv run python -m pipelines.preprocess_contrails_org --region global "${PERIOD[@]}" --runner=dataflow
+# --- Forecast from a product (the API picks the run; no leads)
 # pipenv run python -m pipelines.preprocess_google --region global "${PERIOD[@]}"   # runs locally
 
-# --- Forecasts from model data. Each valid hour is written at the forecast no shorter than 0, 12, 24
-# and 36 hours: its shortest lead (0 to 5 hours) plus each of --lead-offsets (default 0,12,24,36).
-# Try one day first.
+# --- Forecasts with leads. Each valid hour is written at the forecast no shorter than 0, 12, 24 and
+# 36 hours: its shortest lead (0 to 5 hours) plus each of --lead-offsets (default 0,12,24,36).
+# contrails.org has no lead 0, so its first lead is 6 hours at 00, 06, 12 and 18Z.
+# pipenv run python -m pipelines.preprocess_contrails_org --region global "${PERIOD[@]}"
 # pipenv run python -m pipelines.preprocess_hres --region global "${PERIOD[@]}" --runner=dataflow
 # pipenv run python -m pipelines.preprocess_metoffice --region global "${PERIOD[@]}" --runner=dataflow
 # pipenv run python -m pipelines.preprocess_gfs --region global "${PERIOD[@]}" --runner=dataflow

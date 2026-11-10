@@ -48,12 +48,14 @@ class ShardJob:
     #: Hours added to each valid time's shortest lead (see :mod:`src.forecast_runs`), one file per
     #: lead; ``None`` for a source with no leads
     lead_offsets: tuple[int, ...] | None = None
+    #: Whether the source has a forecast at lead 0 (see :func:`src.forecast_runs.leads`)
+    has_analysis: bool = True
 
     def keys(self, time: datetime.datetime) -> set[ShardKey]:
         """The key of every file the job writes for ``time``."""
         if self.lead_offsets is None:
             return set(self.flight_levels)
-        leads = forecast_runs.leads(time, self.lead_offsets)
+        leads = forecast_runs.leads(time, self.lead_offsets, has_analysis=self.has_analysis)
         return {(fl, lead) for fl in self.flight_levels for lead in leads}
 
     def name(self, time: datetime.datetime, key: ShardKey) -> str:

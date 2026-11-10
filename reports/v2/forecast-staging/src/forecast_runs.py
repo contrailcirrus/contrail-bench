@@ -42,10 +42,20 @@ def shortest_lead(valid_time: datetime.datetime) -> int:
     return valid_time.hour % CYCLE_HOURS
 
 
-def leads(valid_time: datetime.datetime, offsets: Iterable[int]) -> list[int]:
-    """The leads in hours for ``valid_time``: its shortest lead plus each offset."""
+def leads(
+    valid_time: datetime.datetime, offsets: Iterable[int], *, has_analysis: bool = True
+) -> list[int]:
+    """The leads in hours for ``valid_time``: its shortest lead plus each offset.
+
+    A source without the analysis step (lead 0) has no forecast at lead 0, so for the valid times
+    that fall on an initialisation time a lead of 0 becomes the next one, :data:`CYCLE_HOURS`
+    (``has_analysis=False``). A lead that this repeats is listed once.
+    """
     first = shortest_lead(valid_time)
-    return [first + offset for offset in offsets]
+    found = [first + offset for offset in offsets]
+    if not has_analysis:
+        found = [lead or CYCLE_HOURS for lead in found]
+    return list(dict.fromkeys(found))
 
 
 def init_for(valid_time: datetime.datetime, lead: int) -> datetime.datetime:

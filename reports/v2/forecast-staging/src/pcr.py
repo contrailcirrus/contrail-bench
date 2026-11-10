@@ -185,9 +185,10 @@ def regrid_and_derive(
     Returns
     -------
     xarray.Dataset
-        ``rhi`` and ``sac`` on the benchmark grid with a ``flight_level`` dimension. The pressures remain as a ``level`` coordinate along
-        ``flight_level``. Use :func:`split_flight_levels` for single-level files. Where source data
-        is missing the fields are NaN in the target cells that cover it, and only there.
+        ``rhi`` and ``sac`` on the benchmark grid with a ``flight_level`` dimension. The pressures
+        remain as a ``level`` coordinate along ``flight_level``. Use :func:`split_flight_levels`
+        for single-level files. Where source data is missing the fields are NaN in the target cells
+        that cover it, and only there.
     """
     regridded = xr.Dataset(
         {

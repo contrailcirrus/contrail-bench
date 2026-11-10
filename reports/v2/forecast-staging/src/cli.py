@@ -48,10 +48,12 @@ def shard_job_for(
     source: str,
     *,
     lead_offsets: tuple[int, ...] | None = None,
+    has_analysis: bool = True,
 ) -> shard_job.ShardJob:
     """The job writing ``source``'s files, in the directory :func:`config.output_dir` gives.
 
-    ``lead_offsets`` is for a source with leads: see :attr:`shard_job.ShardJob.lead_offsets`.
+    ``lead_offsets`` and ``has_analysis`` are for a source with leads: see
+    :attr:`shard_job.ShardJob.lead_offsets` and :attr:`shard_job.ShardJob.has_analysis`.
     """
     directory = config.output_dir(source, args.region, root=args.root)
     return shard_job.ShardJob(
@@ -59,6 +61,7 @@ def shard_job_for(
         config.FLIGHT_LEVELS,
         skip_failures=args.skip_failures,
         lead_offsets=lead_offsets,
+        has_analysis=has_analysis,
     )
 
 
