@@ -50,9 +50,6 @@ class Dataloader(ABC):
 class ADSBDataloader(Dataloader):
     """Data loader for public ADSB evaluation dataset."""
 
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/adsb"
-
     @override
     def data(
         self,
@@ -62,7 +59,7 @@ class ADSBDataloader(Dataloader):
     ) -> xr.Dataset:
 
         ts = int(pd.to_datetime(time).timestamp())
-        df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
+        df = pd.read_parquet(f"{self.root(time)}/{ts}_{flight_level}.pq")
 
         if extent is not None:
             lon_min, lon_max, lat_min, lat_max = extent
@@ -76,12 +73,31 @@ class ADSBDataloader(Dataloader):
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "flight_distance": dist})
 
+    @staticmethod
+    def root(time: DatetimeLike) -> str:
+        """Return GCS root of evaluation dataset.
+
+        Parameters
+        ----------
+        time : DatetimeLike
+            Requested time.
+
+        Returns
+        -------
+        str
+            GCS root.
+
+        """
+        year = pd.to_datetime(time).year
+        if year == 2024:
+            return "gs://contrailbench-public-data/v1/adsb"
+        if year == 2025:
+            return "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/adsb"
+        raise ValueError(f"ADSB evaluation data not available for {year}.")
+
 
 class IAGOSDataloader(Dataloader):
     """Data loader for public IAGOS evaluation dataset."""
-
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/iagos"
 
     @override
     def data(
@@ -92,7 +108,7 @@ class IAGOSDataloader(Dataloader):
     ) -> xr.Dataset:
 
         ts = int(pd.to_datetime(time).timestamp())
-        df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
+        df = pd.read_parquet(f"{self.root(time)}/{ts}_{flight_level}.pq")
 
         if extent is not None:
             lon_min, lon_max, lat_min, lat_max = extent
@@ -107,12 +123,31 @@ class IAGOSDataloader(Dataloader):
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
 
+    @staticmethod
+    def root(time: DatetimeLike) -> str:
+        """Return GCS root of evaluation dataset.
+
+        Parameters
+        ----------
+        time : DatetimeLike
+            Requested time.
+
+        Returns
+        -------
+        str
+            GCS root.
+
+        """
+        year = pd.to_datetime(time).year
+        if year == 2024:
+            return "gs://contrailbench-public-data/v1/iagos"
+        if year == 2025:
+            return "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/iagos"
+        raise ValueError(f"IAGOS evaluation data not available for {year}.")
+
 
 class GRUANDataloader(Dataloader):
     """Data loader for public GRUAN evaluation dataset."""
-
-    #: Path to GCS directory
-    path: str = "gs://contrailbench-public-data/v1/gruan"
 
     @override
     def data(
@@ -123,7 +158,7 @@ class GRUANDataloader(Dataloader):
     ) -> xr.Dataset:
 
         ts = int(pd.to_datetime(time).timestamp())
-        df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
+        df = pd.read_parquet(f"{self.root(time)}/{ts}_{flight_level}.pq")
 
         if extent is not None:
             lon_min, lon_max, lat_min, lat_max = extent
@@ -138,11 +173,31 @@ class GRUANDataloader(Dataloader):
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
 
+    @staticmethod
+    def root(time: DatetimeLike) -> str:
+        """Return GCS root of evaluation dataset.
+
+        Parameters
+        ----------
+        time : DatetimeLike
+            Requested time.
+
+        Returns
+        -------
+        str
+            GCS root.
+
+        """
+        year = pd.to_datetime(time).year
+        if year == 2024:
+            return "gs://contrailbench-public-data/v1/gruan"
+        if year == 2025:
+            return "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/gruan"
+        raise ValueError(f"GRUAN evaluation data not available for {year}.")
+
 
 class ContrailWatchDataloader(Dataloader):
     """Data loader for public ContrailWatch evaluation dataset."""
-
-    path: str = "gs://contrailbench-public-data/v1/contrailwatch"
 
     @override
     def data(
@@ -153,7 +208,7 @@ class ContrailWatchDataloader(Dataloader):
     ) -> xr.Dataset:
 
         ts = int(pd.to_datetime(time).timestamp())
-        df = pd.read_parquet(f"{self.path}/{ts}_{flight_level}.pq")
+        df = pd.read_parquet(f"{self.root(time)}/{ts}_{flight_level}.pq")
 
         if extent is not None:
             lon_min, lon_max, lat_min, lat_max = extent
@@ -167,3 +222,75 @@ class ContrailWatchDataloader(Dataloader):
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
 
         return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
+
+    @staticmethod
+    def root(time: DatetimeLike) -> str:
+        """Return GCS root of evaluation dataset.
+
+        Parameters
+        ----------
+        time : DatetimeLike
+            Requested time.
+
+        Returns
+        -------
+        str
+            GCS root.
+
+        """
+        year = pd.to_datetime(time).year
+        if year == 2024:
+            return "gs://contrailbench-public-data/v1/contrailwatch"
+        if year == 2025:
+            return "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/contrailwatch"
+        raise ValueError(f"ContrailWatch evaluation data not available for {year}.")
+
+
+class ImperialAttributionsDataloader(Dataloader):
+    """Data loader for public Imperial College attributions evaluation dataset."""
+
+    @override
+    def data(
+        self,
+        time: DatetimeLike,
+        flight_level: int,
+        extent: tuple[float, float, float, float] | None = None,
+    ) -> xr.Dataset:
+
+        ts = int(pd.to_datetime(time).timestamp())
+        df = pd.read_parquet(f"{self.root(time)}/{ts}_{flight_level}.pq")
+
+        if extent is not None:
+            lon_min, lon_max, lat_min, lat_max = extent
+            df = df.loc[
+                df["longitude"].between(lon_min, lon_max) & df["latitude"].between(lat_min, lat_max)
+            ]
+
+        df = df.loc[df["attributed_flight_distance"] > 0]
+        lon = xr.DataArray(df["longitude"], dims="cell")
+        lat = xr.DataArray(df["latitude"], dims="cell")
+        area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
+
+        return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
+
+    @staticmethod
+    def root(time: DatetimeLike) -> str:
+        """Return GCS root of evaluation dataset.
+
+        Parameters
+        ----------
+        time : DatetimeLike
+            Requested time.
+
+        Returns
+        -------
+        str
+            GCS root.
+
+        """
+        year = pd.to_datetime(time).year
+        if year == 2025:
+            return (
+                "gs://contrails-301217-contrail-bench/v2/evaluation-datasets/imperial-attributions"
+            )
+        raise ValueError(f"Imperial attributions evaluation data not available for {year}.")
