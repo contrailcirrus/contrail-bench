@@ -266,12 +266,27 @@ class ImperialAttributionsDataloader(Dataloader):
                 df["longitude"].between(lon_min, lon_max) & df["latitude"].between(lat_min, lat_max)
             ]
 
-        df = df.loc[df["attributed_flight_distance"] > 0]
+        df = df.loc[
+            (df["attributed_flight_distance_low"] > 0)
+            | (df["attributed_flight_distance_medium"] > 0)
+            | (df["attributed_flight_distance_high"] > 0)
+        ]
         lon = xr.DataArray(df["longitude"], dims="cell")
         lat = xr.DataArray(df["latitude"], dims="cell")
         area = (radius_earth * np.deg2rad(0.25)) ** 2 * np.cos(np.deg2rad(lat))
+        weight = xr.DataArray(
+            df[
+                [
+                    "attributed_flight_distance_low",
+                    "attributed_flight_distance_medium",
+                    "attributed_flight_distance_high",
+                ]
+            ]
+            > 0,
+            dims=("cell", "mode"),
+        ).assign_coords(mode=["low", "medium", "high"])
 
-        return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area})
+        return xr.Dataset(data_vars={"longitude": lon, "latitude": lat, "area": area * weight})
 
     @staticmethod
     def root(time: DatetimeLike) -> str:

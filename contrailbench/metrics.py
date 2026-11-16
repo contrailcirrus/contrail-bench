@@ -108,10 +108,12 @@ class HitRate(Metric):
 
     data : xr.Dataset
         Gridded dataset of PCR observations. Must contain ``"longitude"``, ``"latitude"``,
-        and ``"area"`` as one-dimensional variables with dimension ``"cell"``,
-        representing the locations and areal extent of grid cells with observed evidence
-        of a PCR. Values in ``"longitude"`` and ``"latitude"`` must be a subset of the
-        longitude and latitude coordinates included in the PCR forecast.
+        as one-dimensional variables with dimension ``"cell"`` and ``"area"`` as a variable
+        with dimension ``"cell"``, representing the locations and areal extent of grid cells
+        with observed evidence of a PCR. Values in ``"longitude"`` and ``"latitude"`` must
+        be a subset of the longitude and latitude coordinates included in the PCR forecast.
+        Additional dimensions are permitted in ``"area"`` and allow evaluation to be
+        vectorized across variants of evidence.
 
     Returns
     -------
