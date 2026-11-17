@@ -134,10 +134,10 @@ class Forecast:
         self, time: pd.Timestamp, flight_level: int, metrics: dict[str, Metric]
     ) -> xr.Dataset:
         """Run evaluation on a single shard."""
-        forecast = self.dataloader.data(time, flight_level, None)
+        forecast = self.dataloader.data(time, flight_level)
         ds_list = []
         for name, metric in metrics.items():
-            data = metric.dataloader.data(time, flight_level, None)
+            data = metric.dataloader.data(time, flight_level)
 
             if self.regions is None:
                 statistics = metric.statistics(forecast, data)
