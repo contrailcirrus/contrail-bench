@@ -29,17 +29,16 @@ class Forecast:
     flight_levels: Iterable[int]
         Flight levels included in evaluation.
 
-    extent : tuple[float, float, float, float]
-        Geographic area included in evaluation (optional). Elements represent,
-        in order, the westward-most latitude, eastward-most latitude,
-        southward-most longitude, and northward-most longitude of
-        a bounding box.
+    regions : dict[str, tuple[float, float, float, float] | None] | None
+        Geographic regions included in evaluation (optional). Values represent,
+        in order, the westward-most longitude, eastward-most longitude,
+        southward-most latitude, and northward-most latitude of a bounding box.
     """
 
     __slots__ = (
         "dataloader",
-        "extent",
         "flight_levels",
+        "regions",
         "times",
     )
 
@@ -52,20 +51,20 @@ class Forecast:
     #: Flight levels included in evaluation
     flight_levels: list[int]
 
-    #: Longitude-latitude bounded box included in evaluation
-    extent: tuple[float, float, float, float] | None
+    #: Regions included in evaluation
+    regions: dict[str, tuple[float, float, float, float] | None] | None
 
     def __init__(
         self,
         dataloader: Dataloader,
         times: Iterable[DatetimeLike],
         flight_levels: Iterable[int],
-        extent: tuple[float, float, float, float] | None,
+        regions: dict[str, tuple[float, float, float, float] | None] | None = None,
     ) -> None:
         self.dataloader = dataloader
         self.times = [pd.to_datetime(t) for t in times]
         self.flight_levels = list(flight_levels)
-        self.extent = extent
+        self.regions = regions
 
     def evaluate(self, **metrics: Metric) -> xr.Dataset:
         """Evaluate forecast against a set of metrics.
@@ -135,17 +134,58 @@ class Forecast:
         self, time: pd.Timestamp, flight_level: int, metrics: dict[str, Metric]
     ) -> xr.Dataset:
         """Run evaluation on a single shard."""
-        forecast = self.dataloader.data(time, flight_level, self.extent)
+        forecast = self.dataloader.data(time, flight_level, None)
         ds_list = []
         for name, metric in metrics.items():
-            data = metric.dataloader.data(time, flight_level, self.extent)
-            statistics = metric.statistics(forecast, data)
+            data = metric.dataloader.data(time, flight_level, None)
 
-            statistics = statistics.assign_coords(time=time, flight_level=flight_level)
-            statistics = statistics.rename_vars({key: f"{name}.{key}" for key in statistics})
+            if self.regions is None:
+                statistics = metric.statistics(forecast, data)
+                statistics = statistics.assign_coords(time=time, flight_level=flight_level)
+                statistics = statistics.rename_vars({key: f"{name}.{key}" for key in statistics})
+                ds_list.append(statistics)
+                continue
+
+            stats_list = []
+            for region, extent in self.regions.items():
+                region_forecast = _downselect(forecast, extent)
+                region_data = _downselect(data, extent)
+
+                statistics = metric.statistics(region_forecast, region_data)
+                statistics = statistics.assign_coords(
+                    time=time, flight_level=flight_level, region=region
+                )
+                statistics = statistics.expand_dims("region")
+                statistics = statistics.rename_vars({key: f"{name}.{key}" for key in statistics})
+                stats_list.append(statistics)
+
+            statistics = xr.concat(stats_list, dim="region", coords="minimal", compat="identical")
             ds_list.append(statistics)
 
         return xr.merge(ds_list, compat="identical")
+
+
+def _downselect(ds: xr.Dataset, extent: tuple[float, float, float, float] | None) -> xr.Dataset:
+    """Downselect Dataset based on bounding box."""
+    if extent is None:
+        return ds
+
+    lon_min, lon_max, lat_min, lat_max = extent
+    if lon_min <= lon_max:
+        lon_mask = (ds["longitude"] >= lon_min) & (ds["longitude"] <= lon_max)
+    else:
+        lon_mask = (ds["longitude"] >= lon_min) | (ds["longitude"] <= lon_max)
+    lat_mask = (ds["latitude"] >= lat_min) & (ds["latitude"] <= lat_max)
+
+    # forecast data
+    if "longitude" in ds.dims and "latitude" in ds.dims:
+        return ds.sel(longitude=lon_mask, latitude=lat_mask)
+
+    # evaluation data
+    if lon_mask.dims == ("cell",) and lat_mask.dims == ("cell",):
+        return ds.sel(cell=lon_mask & lat_mask)
+
+    raise ValueError("Unexpected Dataset format.")
 
 
 class _Evaluate(beam.DoFn):
